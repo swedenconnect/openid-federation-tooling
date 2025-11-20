@@ -1,0 +1,8 @@
+openid:
+  federation:
+    tooling:
+      trustAnchorEntityId: "https://feb.sandbox.swedenconnect.se/trustanchor"
+      discoveryUri: "https://feb.sandbox.swedenconnect.se/trustanchor/discovery"
+      resolverUri: "https://feb.sandbox.swedenconnect.se/trustanchor/resolve"
+
+

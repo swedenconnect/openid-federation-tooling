@@ -1,0 +1,8 @@
+openid:
+  federation:
+    tooling:
+      trustAnchorEntityId: "https://dev.swedenconnect.se/oidf/sc/ta"
+      discoveryUri: "https://dev.swedenconnect.se/oidf/sc/ta/discovery"
+      resolverUri: "https://dev.swedenconnect.se/oidf/sc/ta/resolve"
+
+

@@ -1,0 +1,45 @@
+management:
+  metrics:
+    tags:
+      application_version: ${spring.application.version}
+      application_name: ${spring.application.name}
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  server:
+    port: 2051
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+spring:
+  application:
+    name: oidf-tooling
+    version: '@project.version@'
+  mvc:
+    problemdetails:
+      enabled: true
+
+  threads:
+
+    virtual:
+      enabled: true
+
+  jackson:
+    default-property-inclusion: non_null
+
+logging:
+  level:
+    se:
+      swedenconnect:
+        oidf: info
+
+server:
+  port: 2050
+  compression:
+    enabled: true
+
+
+
+
