@@ -1,12 +1,12 @@
 ![Logo](docs/images/sweden-connect.png)
 
-# Contributing to the BankID SAML IdP
+# Contributing to OIDF Tooling
 
-The BankID SAML IdP is released under the Apache 2.0 license. If you would like to contribute something, or simply want to hack on the code this document should help you get started.
+OIDF Tooling is released under the Apache 2.0 license. If you would like to contribute something, or simply want to hack on the code this document should help you get started.
 
 ## Using GitHub Issues
 
-We use [GitHub issues](https://github.com/swedenconnect/bankid-saml-idp/issues) to track bugs and enhancements.
+We use [GitHub issues](https://github.com/swedenconnect/openid-federation-tooling/issues) to track bugs and enhancements.
 
 If you are reporting a bug, please assist to speed up problem diagnosis by providing as much information as possible. We will not act on bug reports that only is a screenshot of a web page or something similar.
 
@@ -17,7 +17,7 @@ For each bug report include the following:
 - Steps to reproduce: Explain how we can reproduce this error.
 - Log entries. If possible with a detailed log level.
 
-If the bug concerns an unexpected behaviour during a BankID operation include:
+If the bug concerns an unexpected behaviour in frontend operation include:
 
 - Device: Android/iOS/Windows/macOS
 - Browser: Safari/Chrome/Edge/Samsung Internet/...

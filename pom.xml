@@ -21,4 +21,15 @@
     <modules>
         <module>backend</module>
     </modules>
+
+    <developers>
+
+        <developer>
+            <name>Per Fredrik Plars</name>
+            <email>pf@litsec.se</email>
+            <organization>PA Partner</organization>
+            <organizationUrl>https://www.digg.se</organizationUrl>
+        </developer>
+
+    </developers>
 </project>
