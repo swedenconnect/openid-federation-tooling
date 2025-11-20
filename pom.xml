@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>se.swedenconnect.oidf</groupId>
+        <artifactId>openid-federation-parent</artifactId>
+        <version>0.5.6</version>
+    </parent>
+    <artifactId>oidf-tooling-parent</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <repositories>
+        <repository>
+            <id>github</id>
+            <name>Github Swedenconnect Common</name>
+            <url>https://maven.pkg.github.com/swedenconnect/*</url>
+        </repository>
+    </repositories>
+    <modules>
+        <module>backend</module>
+    </modules>
+
+    <developers>
+
+        <developer>
+            <name>Per Fredrik Plars</name>
+            <email>pf@litsec.se</email>
+            <organization>PA Partner</organization>
+            <organizationUrl>https://www.digg.se</organizationUrl>
+        </developer>
+
+    </developers>
+</project>
