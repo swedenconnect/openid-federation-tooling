@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint . --fix",
-    "install": "vite build; cp -R dist/ ../src/main/resources/static/"
+    "build-local": "vite build; cp -R dist/ ../backend/src/main/resources/static/"
   },
   "dependencies": {
     "@fontsource/roboto": "5.2.7",
