@@ -24,7 +24,7 @@
     <parent>
         <groupId>se.swedenconnect.oidf</groupId>
         <artifactId>oidf-tooling-parent</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <version>${service-revision}</version>
     </parent>
     <artifactId>oidf-tooling</artifactId>
     <packaging>jar</packaging>
@@ -32,7 +32,16 @@
     <description>REST Service for Sweden Connect OpenID Federation Tooling</description>
     <url>https://www.swedenconnect.se</url>
 
-    <version>1.0.0-SNAPSHOT</version>
+
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+
 
     <repositories>
         <repository>
@@ -172,7 +181,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.13.0</version>
+                <version>3.14.1</version>
                 <configuration>
                     <annotationProcessorPaths>
                         <path>
