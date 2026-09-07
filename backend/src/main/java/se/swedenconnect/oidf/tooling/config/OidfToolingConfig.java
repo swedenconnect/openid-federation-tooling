@@ -28,6 +28,7 @@ import org.springframework.web.client.RestClient;
 import se.swedenconnect.oidf.tooling.integration.OidfServiceIntegration;
 import se.swedenconnect.oidf.tooling.oidftooling.OidfMetaDataValidatorService;
 import se.swedenconnect.oidf.tooling.oidftooling.OidfToolingService;
+import se.swedenconnect.oidf.tooling.validation.SsrfGuard;
 
 import javax.net.ssl.SSLContext;
 import java.net.http.HttpClient;
@@ -81,9 +82,20 @@ public class OidfToolingConfig {
     return new OidfToolingService(oidfServiceIntegration, properties);
   }
 
+  /**
+   * Provides the metadata validator, configured with the SSRF guard from
+   * {@code openid.federation.tooling.ssrf-protection} so outbound calls the validator makes on behalf of
+   * user-supplied URLs cannot be used to reach internal/private networks.
+   *
+   * @param properties the application properties holding the SSRF protection configuration.
+   * @return a configured {@link OidfMetaDataValidatorService} instance.
+   */
   @Bean
-  OidfMetaDataValidatorService oidfMetaDataValidator() {
-    return new OidfMetaDataValidatorService();
+  OidfMetaDataValidatorService oidfMetaDataValidator(final OidfToolingProperties properties) {
+    final OidfToolingProperties.SsrfProtectionProperties ssrfProtection = properties.getSsrfProtection();
+    final SsrfGuard ssrfGuard = new SsrfGuard(ssrfProtection.isEnableLocalIpAddressRanges(),
+        ssrfProtection.getBlockHostname());
+    return new OidfMetaDataValidatorService(ssrfGuard);
   }
 
   private void settingSSLTrustContext(

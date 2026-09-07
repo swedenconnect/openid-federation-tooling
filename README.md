@@ -24,12 +24,22 @@ Validates entity statements by entering an entity ID, JWT, or a JWT payload.
 Provides a visual representation of all nodes in the federation under the defined trust anchor.
 
 ## Documentation
-| Property                     | Value                                                      | Description                                           |
-|-------------------------------|------------------------------------------------------------|-------------------------------------------------------|
-| `trustAnchorEntityId`         | `https://dev.swedenconnect.se/oidf/sc/ta`                 | The entity ID of the trust anchor in the federation. |
-| `discoveryUri`                | `https://dev.swedenconnect.se/oidf/sc/ta/discovery`       | URI used to discover federation metadata.            |
-| `resolverUri`                 | `https://dev.swedenconnect.se/oidf/sc/ta/resolve`         | URI used to resolve entities in the federation.      |
+| Property                                          | Value                                                | Description                                                                                                          |
+|----------------------------------------------------|-------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
+| `trustAnchorEntityId`                              | `https://dev.swedenconnect.se/oidf/sc/ta`             | The entity ID of the trust anchor in the federation.                                                                  |
+| `discoveryUri`                                     | `https://dev.swedenconnect.se/oidf/sc/ta/discovery`   | URI used to discover federation metadata.                                                                             |
+| `resolverUri`                                      | `https://dev.swedenconnect.se/oidf/sc/ta/resolve`     | URI used to resolve entities in the federation.                                                                       |
+| `ssrfProtection.enableLocalIpAddressRanges`        | `false` (default)                                     | If `true`, allows outbound calls to loopback/link-local/site-local (RFC 1918) and IPv6 unique-local addresses. **Enabling this opens a security issue** - the service can then be used to reach or scan internal networks. Only intended for local development or testing. |
+| `ssrfProtection.blockHostname`                     | *(none by default)*                                   | A list of regular expressions matched against the hostname of any URL the service is about to fetch (entity ids, `jwks_uri`, `logo_uri`, SAML `metadata_endpoint`). A match denies the request.                     |
 
+### Outbound request protection (SSRF)
+
+The service makes outbound HTTP calls on behalf of values found in user-supplied metadata - entity ids, `jwks_uri`,
+`logo_uri`, and SAML `metadata_endpoint`. By default these calls are only allowed to use HTTPS and must resolve to a
+public, globally routable address; requests to loopback, link-local (including cloud metadata endpoints such as
+`169.254.169.254`), site-local (RFC 1918) and IPv6 unique-local addresses are blocked. This prevents the service from
+being used to scan or reach internal networks. `ssrfProtection.enableLocalIpAddressRanges` and
+`ssrfProtection.blockHostname` above are the only ways to adjust this behavior.
 
 Example configuration in application.yaml
 ```yaml
@@ -39,12 +49,17 @@ openid:
       trustAnchorEntityId: "https://dev.swedenconnect.se/oidf/sc/ta"
       discoveryUri: "https://dev.swedenconnect.se/oidf/sc/ta/discovery"
       resolverUri: "https://dev.swedenconnect.se/oidf/sc/ta/resolve"
+      ssrfProtection:
+        enableLocalIpAddressRanges: false
+        blockHostname:
+          - "\\.internal\\.example\\.com$"
 ```
 System environment override
 ```yaml
 export OPENID_FEDERATION_TOOLING_TRUSTANCHORENTITYID="https://example.com/ta"
 export OPENID_FEDERATION_TOOLING_DISCOVERYURI="https://example.com/ta/discovery"
 export OPENID_FEDERATION_TOOLING_RESOLVERURI="https://example.com/ta/resolve"
+export OPENID_FEDERATION_TOOLING_SSRFPROTECTION_ENABLELOCALIPADDRESSRANGES="false"
 
 java -jar oidf-tooling.jar 
 ```

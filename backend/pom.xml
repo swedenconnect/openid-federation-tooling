@@ -193,6 +193,23 @@
                 </configuration>
             </plugin>
 
+            <!--
+              The parent POM declares this plugin but without an executions block, so the repackage goal is never
+              bound to the build lifecycle there. Without this, `mvn package` produces a plain, non-executable jar
+              (no Main-Class, no embedded dependencies), and `java -jar` fails with "no main manifest attribute".
+            -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
         </plugins>
     </build>
 

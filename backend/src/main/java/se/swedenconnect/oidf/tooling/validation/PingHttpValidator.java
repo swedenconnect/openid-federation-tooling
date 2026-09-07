@@ -36,6 +36,24 @@ public class PingHttpValidator implements PropertyValidatorPlugin {
   private static final int MAX_REQUESTS_PER_MINUTE = 120;
   private static final Deque<Long> requestTimestamps = new ArrayDeque<>();
 
+  private final SsrfGuard ssrfGuard;
+
+  /**
+   * Constructs an instance of PingHttpValidator with the default, most restrictive {@link SsrfGuard}.
+   */
+  public PingHttpValidator() {
+    this(new SsrfGuard());
+  }
+
+  /**
+   * Constructs an instance of PingHttpValidator using the given {@link SsrfGuard} configuration.
+   *
+   * @param ssrfGuard the guard used to block outbound calls to internal/private networks
+   */
+  public PingHttpValidator(final SsrfGuard ssrfGuard) {
+    this.ssrfGuard = ssrfGuard;
+  }
+
   @Override
   public void validate(final String key, final String value) {
     if (value == null || value.isBlank()) {
@@ -47,6 +65,13 @@ public class PingHttpValidator implements PropertyValidatorPlugin {
       url = URI.create(value).toURL();
     }
     catch (final MalformedURLException e) {
+      throw new PropertyValidationFailException(key, value, e.getMessage());
+    }
+
+    try {
+      this.ssrfGuard.assertSafeToConnect(url);
+    }
+    catch (final SecurityException e) {
       throw new PropertyValidationFailException(key, value, e.getMessage());
     }
 
