@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -143,7 +144,24 @@ public class GraphBuilder {
 
   private void newEdge(final List<Edges> edges, final EntityStatement parent, final EntityStatement entityStatement,
       final Exception e) {
-    edges.add(new Edges(parent == null ? null : parent.getEntityID(), entityStatement.getEntityID(), e));
+    edges.add(new Edges(parent == null ? null : parent.getEntityID(), entityStatement.getEntityID(), entityStatement,
+        e));
+  }
+
+  /**
+   * Looks up the subordinate statement a parent entity issued about a specific child, as discovered during the last
+   * federation walk. This is the statement fetched from the parent's {@code federation_fetch_endpoint} - not the
+   * child's own entity configuration.
+   *
+   * @param parent the parent (issuer) entity id
+   * @param child the child (subject) entity id
+   * @return the subordinate statement for that edge, if the edge exists in the currently served graph
+   */
+  public Optional<EntityStatement> getSubordinateStatement(final EntityID parent, final EntityID child) {
+    return this.snapshot.get().edges().stream()
+        .filter(edge -> Objects.equals(edge.parent(), parent) && Objects.equals(edge.child(), child))
+        .map(Edges::subordinateStatement)
+        .findFirst();
   }
 
   private void newNode(final Map<EntityID, EntityStatement> entityStatements, final EntityStatement parent,
@@ -178,9 +196,11 @@ public class GraphBuilder {
    *
    * @param parent the identifier of the parent entity in the edge relationship
    * @param child the identifier of the child entity in the edge relationship
+   * @param subordinateStatement the subordinate statement the parent issued about the child, fetched from the
+   *     parent's {@code federation_fetch_endpoint}
    * @param exception an exception associated with the edge, if applicable
    */
-  public record Edges(EntityID parent, EntityID child, Exception exception) {
+  public record Edges(EntityID parent, EntityID child, EntityStatement subordinateStatement, Exception exception) {
   }
 
   /**
