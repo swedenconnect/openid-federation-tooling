@@ -15,6 +15,7 @@ import { createApp } from 'vue'
 
 // Styles
 import 'unfonts.css'
+import '@/styles/sweden-connect-theme.scss'
 
 const app = createApp(App)
 

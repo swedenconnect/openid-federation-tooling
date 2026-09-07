@@ -32,8 +32,8 @@ export default defineConfig({
     Fonts({
       google: {
         families: [{
-          name: 'Roboto',
-          styles: 'wght@100;300;400;500;700;900',
+          name: 'Ubuntu',
+          styles: 'ital,wght@0,400;0,500;0,700;1,400',
         }],
       },
     }),
