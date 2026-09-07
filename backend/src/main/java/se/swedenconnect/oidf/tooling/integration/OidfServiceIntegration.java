@@ -51,7 +51,6 @@ import java.util.Optional;
 public class OidfServiceIntegration {
 
   private final RestClient restClient;
-  private final ObjectMapper mapper = new ObjectMapper();
 
   /**
    * Constructs a new {@code OidfServiceIntegration} instance.
