@@ -15,28 +15,24 @@
  */
 package se.swedenconnect.oidf.tooling.oidftooling.validator;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import se.swedenconnect.oidf.tooling.domain.ValidationResult;
-import se.swedenconnect.oidf.tooling.oidftooling.OidfMetaDataValidatorService;
 import se.swedenconnect.oidf.tooling.validation.MetadataValidator;
 import se.swedenconnect.oidf.tooling.validation.PingHttpValidator;
-import se.swedenconnect.oidf.tooling.validation.PropertyValidator;
 import se.swedenconnect.oidf.tooling.validation.PropertyValidators;
 import se.swedenconnect.oidf.tooling.validation.VariabelValueResolver;
 
 import java.util.Map;
-import java.util.Objects;
-import java.util.function.Function;
+import java.util.Set;
 
 /**
- * Validator for RelyingParty metadata
+ * Validator for RelyingParty metadata, implementing the RP-specific requirements of the Sweden Connect OIDC
+ * metadata profile (https://docs.swedenconnect.se/federation/oidc-metadata-requirements.html). Fields common to
+ * both RP and OP live in {@link SwedenConnectMetadataRules}.
  *
  * @author Per Fredrik Plars
  */
 public class RPMetaDataValidator implements MetadataValidator {
 
-  final static ObjectMapper mapper = new ObjectMapper();
   final static String supportedMetadataType = "openid_relying_party";
   final PropertyValidators propertyValidators = new PropertyValidators();
 
@@ -53,9 +49,8 @@ public class RPMetaDataValidator implements MetadataValidator {
   }
 
   /**
-   * Validates the provided metadata map against predefined property validation rules. This method uses multiple
-   * property validators to check fields for required constraints, length limits, and URL format correctness. Any
-   * validation issues are added as warnings to the provided ValidationResult instance.
+   * Validates the provided metadata map against the RP requirements of the Sweden Connect OIDC metadata profile.
+   * Any validation issues are added as warnings to the provided ValidationResult instance.
    *
    * @param metadata a map containing key-value pairs representing the metadata to be validated
    * @param result an instance of ValidationResult used to collect validation outcomes, including warnings for any
@@ -67,90 +62,106 @@ public class RPMetaDataValidator implements MetadataValidator {
       return result;
     }
     final String baseFiledName = "metadata.%s.".formatted(supportedMetadataType);
-    final PropertyValidator req = this.v().required().length(1, 1000).build();
-    final PropertyValidator reqUrl = this.v().required().url().build();
-    req.eval(baseFiledName + "organization_name", metadata.get("organization_name")).ifPresent(result.warn());
-    req.eval(baseFiledName + "organization_name#en", metadata.get("organization_name#en")).ifPresent(result.warn());
-    req.eval(baseFiledName + "organization_name#sv", metadata.get("organization_name#sv")).ifPresent(result.warn());
 
-    req.eval(baseFiledName + "client_name", metadata.get("client_name")).ifPresent(result.warn());
-    req.eval(baseFiledName + "client_name#en", metadata.get("client_name#en")).ifPresent(result.warn());
-    req.eval(baseFiledName + "client_name#sv", metadata.get("client_name#sv")).ifPresent(result.warn());
+    SwedenConnectMetadataRules.validateCommonFields(metadata, baseFiledName, this.propertyValidators, result);
+    SwedenConnectMetadataRules.validateMultilingual(metadata, baseFiledName, "client_name",
+        this.propertyValidators, result);
+    SwedenConnectMetadataRules.validateKeyMaterial(metadata, baseFiledName, this.propertyValidators,
+        true, false, result);
 
-    req.eval(baseFiledName + "description", metadata.get("description")).ifPresent(result.warn());
+    this.v().required().url().build()
+        .eval(baseFiledName + "client_uri", metadata.get("client_uri")).ifPresent(result.warn());
 
-    req.eval(baseFiledName + "display_name", metadata.get("display_name")).ifPresent(result.warn());
-    reqUrl.eval(baseFiledName + "redirect_uris", metadata.get("redirect_uris")).ifPresent(result.warn());
+    this.v().required().url().build()
+        .eval(baseFiledName + "redirect_uris", metadata.get("redirect_uris")).ifPresent(result.warn());
 
-    this.v().required().matches("^(?:code|code\\s+id_token|code\\s+token|code\\s+id_token\\s+token)$")
-        .build().eval(baseFiledName + "response_types", metadata.get("response_types")).ifPresent(result.warn());
+    this.v().url().build()
+        .eval(baseFiledName + "post_logout_redirect_uris", metadata.get("post_logout_redirect_uris"))
+        .ifPresent(result.warn());
 
-    this.v().required()
-        .matches(OidfMetaDataValidatorService.allowedSignAlg)
-        .build()
+    SwedenConnectMetadataRules.requireSuperset(metadata, "response_types", Set.of("code"), baseFiledName, result);
+    SwedenConnectMetadataRules.requireSuperset(metadata, "grant_types", Set.of("authorization_code"),
+        baseFiledName, result);
+
+    // Only "private_key_jwt" is allowed - no alternatives per the Sweden Connect profile.
+    this.v().required().matches("^private_key_jwt$").build()
+        .eval(baseFiledName + "token_endpoint_auth_method", metadata.get("token_endpoint_auth_method"))
+        .ifPresent(result.warn());
+
+    this.v().matches(SwedenConnectMetadataRules.MANDATORY_SIGNING_ALG_PATTERN).build()
         .eval(baseFiledName + "token_endpoint_auth_signing_alg", metadata.get("token_endpoint_auth_signing_alg"))
         .ifPresent(result.warn());
 
-    this.v().required()
-        .email()
-        .build().eval(baseFiledName + "contacts", metadata.get("contacts"))
-        .ifPresent(result.warn());
-
-    reqUrl.eval(baseFiledName + "post_logout_redirect_uris", metadata.get("post_logout_redirect_uris"))
-        .ifPresent(result.warn());
-
-    this.v().required()
-        .matches(OidfMetaDataValidatorService.allowedSignAlg)
-        .build().eval(baseFiledName + "userinfo_signed_response_alg", metadata.get("userinfo_signed_response_alg"))
-        .ifPresent(result.warn());
-
-    this.v().required()
-        .matches(OidfMetaDataValidatorService.allowedSignAlg)
-        .build().eval(baseFiledName + "id_token_signed_response_alg", metadata.get("id_token_signed_response_alg"))
-        .ifPresent(result.warn());
-
-    this.v().required().url().ping().build().eval(baseFiledName + "logo_uri", metadata.get("logo_uri"))
-        .ifPresent(result.warn());
-
-    this.v().required()
-        .matches("^(?:client_secret_basic|client_secret_post|client_secret_jwt|private_key_jwt|none|"
-            + "tls_client_auth|self_signed_tls_client_auth)$").build()
-        .eval(baseFiledName + "token_endpoint_auth_method",
-            metadata.get("token_endpoint_auth_method")).ifPresent(result.warn());
-
-    this.v().email().build().eval(baseFiledName + "contacts", metadata.get("contacts")).ifPresent(result.warn());
-
-    if (!metadata.containsKey("jwks_uri") && !metadata.containsKey("jwks")) {
-      result.addResult(ValidationResult.Level.ERROR,
-          "baseFiledName", "Expects one of the fields to be pressent: jwks or jwks_uri");
+    // The trust anchor metadata policy nulls out these single-valued response algorithm claims in resolved
+    // metadata - presence here indicates the policy was not applied.
+    if (metadata.get("id_token_signed_response_alg") != null) {
+      result.addResult(ValidationResult.Level.WARNING, baseFiledName + "id_token_signed_response_alg",
+          "This field is removed by the trust anchor metadata policy and should not appear in resolved metadata",
+          String.valueOf(metadata.get("id_token_signed_response_alg")));
+    }
+    if (metadata.get("userinfo_signed_response_alg") != null) {
+      result.addResult(ValidationResult.Level.WARNING, baseFiledName + "userinfo_signed_response_alg",
+          "This field is removed by the trust anchor metadata policy and should not appear in resolved metadata",
+          String.valueOf(metadata.get("userinfo_signed_response_alg")));
     }
 
-    this.v().entityid()
-        .ping()
-        .build()
-        .eval(baseFiledName + "jwks_uri", metadata.get("jwks_uri"))
+    this.v().required().build()
+        .eval(baseFiledName + "id_token_signing_alg_values_supported",
+            metadata.get("id_token_signing_alg_values_supported"))
         .ifPresent(result.warn());
-    try {
-      this.v().jwks().build().eval(baseFiledName + "jwks", mapper.writeValueAsString(metadata.get("jwks")))
-          .ifPresent(result.warn());
-    }
-    catch (final JsonProcessingException e) {
-      result.addResult(ValidationResult.Level.WARNING,
-          baseFiledName + "jwks", "InvalidJson: " + e.getMessage());
+    SwedenConnectMetadataRules.requireSuperset(metadata, "id_token_signing_alg_values_supported",
+        SwedenConnectMetadataRules.MANDATORY_SIGNING_ALGS, baseFiledName, result);
+    SwedenConnectMetadataRules.requireExcludes(metadata, "id_token_signing_alg_values_supported",
+        Set.of("none"), baseFiledName, result);
+
+    this.v().required().build()
+        .eval(baseFiledName + "userinfo_signing_alg_values_supported",
+            metadata.get("userinfo_signing_alg_values_supported"))
+        .ifPresent(result.warn());
+    SwedenConnectMetadataRules.requireSuperset(metadata, "userinfo_signing_alg_values_supported",
+        SwedenConnectMetadataRules.MANDATORY_SIGNING_ALGS, baseFiledName, result);
+    SwedenConnectMetadataRules.requireExcludes(metadata, "userinfo_signing_alg_values_supported",
+        Set.of("none"), baseFiledName, result);
+
+    this.validateEncryptionPair(metadata, baseFiledName, "id_token_encrypted_response_alg",
+        "id_token_encrypted_response_enc", result);
+    this.validateEncryptionPair(metadata, baseFiledName, "userinfo_encrypted_response_alg",
+        "userinfo_encrypted_response_enc", result);
+
+    this.v().matches(SwedenConnectMetadataRules.MANDATORY_SIGNING_ALG_PATTERN).build()
+        .eval(baseFiledName + "request_object_signing_alg", metadata.get("request_object_signing_alg"))
+        .ifPresent(result.warn());
+
+    this.v().matches(SwedenConnectMetadataRules.JWE_ALG_PATTERN).build()
+        .eval(baseFiledName + "request_object_encryption_alg", metadata.get("request_object_encryption_alg"))
+        .ifPresent(result.warn());
+    this.v().matches(SwedenConnectMetadataRules.JWE_ENC_PATTERN).build()
+        .eval(baseFiledName + "request_object_encryption_enc", metadata.get("request_object_encryption_enc"))
+        .ifPresent(result.warn());
+    SwedenConnectMetadataRules.requireIfPresentThenPresent(metadata, "request_object_encryption_enc",
+        "request_object_encryption_alg", baseFiledName, result);
+
+    this.v().matches("^(?:public|pairwise)$").build()
+        .eval(baseFiledName + "subject_type", metadata.get("subject_type")).ifPresent(result.warn());
+
+    if (metadata.get("require_auth_time") != null) {
+      SwedenConnectMetadataRules.requireValueEquals(metadata, "require_auth_time", true, baseFiledName, result);
     }
 
     return result;
   }
 
-  private PropertyValidators.ValidationStringBuilder v() {
-    return this.propertyValidators.builder(VariabelValueResolver.defaultResolver());
+  private void validateEncryptionPair(final Map<String, Object> metadata, final String baseFiledName,
+      final String algKey, final String encKey, final ValidationResult result) {
+    this.v().matches(SwedenConnectMetadataRules.JWE_ALG_PATTERN).build()
+        .eval(baseFiledName + algKey, metadata.get(algKey)).ifPresent(result.warn());
+    this.v().matches(SwedenConnectMetadataRules.JWE_ENC_PATTERN).build()
+        .eval(baseFiledName + encKey, metadata.get(encKey)).ifPresent(result.warn());
+    SwedenConnectMetadataRules.requireIfPresentThenPresent(metadata, encKey, algKey, baseFiledName, result);
   }
 
-  private <T> String doIfNotNull(final T value, final Function<T, String> f) {
-    if (Objects.nonNull(value)) {
-      return f.apply(value);
-    }
-    return null;
+  private PropertyValidators.ValidationStringBuilder v() {
+    return this.propertyValidators.builder(VariabelValueResolver.defaultResolver());
   }
 
 }

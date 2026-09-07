@@ -189,6 +189,12 @@ public class PropertyValidatorsTest {
   }
 
   @Test
+  public void testResolveValidator_matchesValidator_nullValueDoesNotThrow() {
+    final PropertyValidator result = resolveValidator("matches:^\\d{3}-\\d{2}-\\d{4}$");
+    assertDoesNotThrow(() -> result.validate("key", null));
+  }
+
+  @Test
   public void testResolveValidator_minValidator() {
     final PropertyValidator result = resolveValidator("min:5");
     assertThrows(PropertyValidationFailException.class, () -> result.validate("key", "3"));

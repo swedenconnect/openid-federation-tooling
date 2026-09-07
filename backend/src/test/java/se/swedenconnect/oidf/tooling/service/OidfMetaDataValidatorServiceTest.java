@@ -15,9 +15,21 @@
  */
 package se.swedenconnect.oidf.tooling.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nimbusds.jose.jwk.Curve;
+import com.nimbusds.jose.jwk.ECKey;
+import com.nimbusds.jose.jwk.JWKSet;
 import org.junit.jupiter.api.Test;
 import se.swedenconnect.oidf.tooling.domain.ValidationResult;
 import se.swedenconnect.oidf.tooling.oidftooling.OidfMetaDataValidatorService;
+
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.interfaces.ECPublicKey;
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -40,5 +52,61 @@ class OidfMetaDataValidatorServiceTest {
 
 
 
+  }
+
+  @Test
+  void validate_openidProvider() throws Exception {
+    final ObjectMapper mapper = new ObjectMapper();
+    final long now = Instant.now().getEpochSecond();
+
+    final Map<String, Object> opMetadata = new HashMap<>();
+    opMetadata.put("organization_name", "Test Org");
+    opMetadata.put("organization_name#en", "Test Org");
+    opMetadata.put("organization_name#sv", "Test Org");
+    opMetadata.put("organization_identifier", "urn:glue:iso6523:0007:1234567890");
+    opMetadata.put("display_name", "Test OP");
+    opMetadata.put("logo_uri", "https://example.com/logo.svg");
+    opMetadata.put("contacts", List.of("op@example.com"));
+    opMetadata.put("jwks_uri", "https://example.com/op/jwks");
+    opMetadata.put("issuer", "https://example.com/op");
+    opMetadata.put("authorization_endpoint", "https://example.com/op/authorize");
+    opMetadata.put("token_endpoint", "https://example.com/op/token");
+    opMetadata.put("userinfo_endpoint", "https://example.com/op/userinfo");
+    opMetadata.put("ui_locales_supported", List.of("en", "sv"));
+    opMetadata.put("scopes_supported", List.of("openid"));
+    opMetadata.put("claims_supported", List.of("sub"));
+    opMetadata.put("response_types_supported", List.of("code"));
+    opMetadata.put("acr_values_supported", List.of("https://id.oidc.se/loa/loa3"));
+    opMetadata.put("subject_types_supported", List.of("public", "pairwise"));
+    opMetadata.put("token_endpoint_auth_methods_supported", List.of("private_key_jwt"));
+    opMetadata.put("claims_parameter_supported", true);
+    opMetadata.put("request_parameter_supported", true);
+    opMetadata.put("request_uri_parameter_supported", true);
+    opMetadata.put("code_challenge_methods_supported", List.of("S256"));
+    opMetadata.put("client_registration_types_supported", List.of("automatic"));
+    opMetadata.put("id_token_signing_alg_values_supported",
+        List.of("RS256", "RS384", "RS512", "ES256", "ES384", "ES512"));
+    opMetadata.put("token_endpoint_auth_signing_alg_values_supported",
+        List.of("RS256", "RS384", "RS512", "ES256", "ES384", "ES512"));
+
+    final KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
+    keyGen.initialize(Curve.P_256.toECParameterSpec());
+    final KeyPair keyPair = keyGen.generateKeyPair();
+    final ECKey publicKey = new ECKey.Builder(Curve.P_256, (ECPublicKey) keyPair.getPublic())
+        .keyID("test-kid").build();
+
+    final Map<String, Object> entityStatement = new HashMap<>();
+    entityStatement.put("sub", "https://example.com/op");
+    entityStatement.put("iss", "https://example.com/op");
+    entityStatement.put("exp", now + 3600);
+    entityStatement.put("iat", now - 60);
+    entityStatement.put("jwks", new JWKSet(publicKey).toJSONObject());
+    entityStatement.put("metadata", Map.of("openid_provider", opMetadata));
+
+    final String metadata = mapper.writeValueAsString(entityStatement);
+    final ValidationResult res = validator.validate(metadata);
+
+    assertNotNull(res);
+    assertTrue(res.isSuccess());
   }
 }

@@ -356,7 +356,7 @@ public class PropertyValidators {
     try {
       final Pattern pattern = Pattern.compile(regex);
       return (key, value) -> this.throwIf(
-          () -> !value.isBlank() && !pattern.matcher(value).matches(),
+          () -> value != null && !value.isBlank() && !pattern.matcher(value).matches(),
           key, "Value does not match required pattern: " + regex, value
       );
     }
