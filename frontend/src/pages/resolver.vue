@@ -35,10 +35,14 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import TopFilterBar from '@/components/TopFilterBar.vue'
 import EntityIdList from "@/components/EntityIdList.vue";
 import ResolverResponseView from "@/components/ResolverResponseView.vue";
+import { extractErrorDetail } from '@/utils/apiError'
+
+const route = useRoute()
 
 const entityId = ref("")
 const entityType = ref("")
@@ -48,6 +52,14 @@ const urls = ref([]);
 const jwtHeader = ref(null);
 const jwtPayload = ref(null);
 const errorMsg = ref(null);
+
+onMounted(() => {
+  const queryEntityId = route.query.entityId
+  if (queryEntityId) {
+    entityId.value = queryEntityId
+    resolveUrl(queryEntityId)
+  }
+})
 
 function displayError(msg) {
    jwtHeader.value = null;
@@ -72,7 +84,7 @@ function fetchUrls() {
       urls.value = data.urls || data
     })
       .catch(err => {
-        displayError(JSON.parse(err.message).detail);
+        displayError(extractErrorDetail(err.message));
       })
 }
 

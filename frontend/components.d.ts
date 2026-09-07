@@ -15,6 +15,7 @@ declare module 'vue' {
     ResolverResponseView: typeof import('./src/components/ResolverResponseView.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    ToolbarNode: typeof import('./src/components/ToolbarNode.vue')['default']
     TopFilterBar: typeof import('./src/components/TopFilterBar.vue')['default']
   }
 }

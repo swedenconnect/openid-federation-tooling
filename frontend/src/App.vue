@@ -3,10 +3,9 @@
     <v-toolbar color="primary" dark>
       <v-toolbar-title>OpenId Federation Tooling</v-toolbar-title>
       <v-spacer />
-      <v-btn :to="{ name: '/' }">Start</v-btn>
+      <v-btn :to="{ name: '/' }">View</v-btn>
       <v-btn :to="{ name: '/validate' }">Validator</v-btn>
       <v-btn :to="{ name: '/resolver' }">Resolver</v-btn>
-      <v-btn :to="{ name: '/oidfview' }">View</v-btn>
     </v-toolbar>
 
     <v-main class="pa-4">
