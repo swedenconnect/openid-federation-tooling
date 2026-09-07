@@ -84,14 +84,26 @@
 
 
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import VueJsonPretty from 'vue-json-pretty';
 import 'vue-json-pretty/lib/styles.css';
+
+const route = useRoute()
+
 const inputData = ref("")
 const validatedData = ref(null)
 const subResults = ref([])
 const errorMsg = ref(null)
 const loading = ref(false)
+
+onMounted(() => {
+  const queryEntityId = route.query.entityId
+  if (queryEntityId) {
+    inputData.value = queryEntityId
+    postData()
+  }
+})
 
 const subHeaders = [
   { title: "Level", key: "level" },

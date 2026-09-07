@@ -1,11 +1,12 @@
 <script setup>
-import {onMounted, ref} from 'vue'
+import {onMounted, onBeforeUnmount, ref} from 'vue'
 import {useVueFlow, VueFlow} from '@vue-flow/core'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 import {Background} from '@vue-flow/background'
 import {Controls} from '@vue-flow/controls'
 import '@vue-flow/controls/dist/style.css'
+import ToolbarNode from '../components/ToolbarNode.vue'
 
 import dagre from 'dagre'
 
@@ -13,9 +14,9 @@ const nodes = ref([])
 const edges = ref([])
 
 const {setNodes, setEdges, fitView} = useVueFlow()
-
+const containerHeight = ref(0)
 function calcWidth(label){
-  return label.length * 7;
+  return label.length * 8 + 24;
 }
 
 // Träd-layout med dagre
@@ -52,7 +53,8 @@ function applyDagreLayout(nodes, edges) {
 }
 
 async function loadTree() {
-  const res = await fetch('api/tree')
+  console.debug("Loading tree...");
+  const res = await fetch('api/tree').catch(console.error)
   if (!res.ok) {
     console.error("Server error:", res.status)
     return
@@ -67,7 +69,16 @@ async function loadTree() {
   }));
 
   const positionedNodes = applyDagreLayout(data.nodes, labeledEdges)
-
+    .map(n => ({
+      ...n,
+      type: 'menu',
+      data: { 
+        label: n.label,
+        toolbarVisible: false,
+        selectedOptions: []
+      }
+    }))
+console.debug("Loaded tree:", positionedNodes);
   setNodes(positionedNodes)
   setEdges(labeledEdges)
 }
@@ -75,14 +86,39 @@ async function loadTree() {
 onMounted(async () => {
   await loadTree()
   setTimeout(() => fitView({padding: 0.2}), 150)
+  updateContainerHeight() // sätt initial höjd
+  window.addEventListener('resize', updateContainerHeight)
+
+})
+
+
+
+function updateContainerHeight() {
+  // Tar fönstrets höjd minus 200px för headern
+  containerHeight.value = window.innerHeight - 100
+}
+
+onMounted(() => {
+  updateContainerHeight() // sätt initial höjd
+  window.addEventListener('resize', updateContainerHeight)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', updateContainerHeight)
 })
 </script>
 
 <template>
-  <div style="width:100%; height:600px;">
-    <VueFlow :nodes="nodes" :edges="edges">
+  <div :style="{ width: '100%', height: containerHeight + 'px' }">
+    <VueFlow :nodes="nodes"
+             :edges="edges">
+      <template #node-menu="props">
+        <ToolbarNode :id="props.id" :data="props.data" />
+      </template>
       <Background/>
       <Controls/>
+
     </VueFlow>
   </div>
 </template>
+
