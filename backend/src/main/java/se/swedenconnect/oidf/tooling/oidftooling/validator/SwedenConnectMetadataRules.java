@@ -104,6 +104,12 @@ public final class SwedenConnectMetadataRules {
   /**
    * Warns for every value in {@code requiredValues} that is missing from the array-valued metadata field
    * {@code key}. If the field is entirely absent this yields one warning per required value.
+   *
+   * @param metadata the metadata map to read {@code key} from
+   * @param key the array-valued metadata field to check
+   * @param requiredValues the values that must all be present in the field
+   * @param baseFieldName prefix used when reporting the field name
+   * @param result the validation result to append warnings to
    */
   public static void requireSuperset(final Map<String, Object> metadata, final String key,
       final Set<String> requiredValues, final String baseFieldName, final ValidationResult result) {
@@ -116,7 +122,16 @@ public final class SwedenConnectMetadataRules {
     }
   }
 
-  /** Warns for every value in {@code forbiddenValues} that is present in the array-valued metadata field {@code key}. */
+  /**
+   * Warns for every value in {@code forbiddenValues} that is present in the array-valued metadata field
+   * {@code key}.
+   *
+   * @param metadata the metadata map to read {@code key} from
+   * @param key the array-valued metadata field to check
+   * @param forbiddenValues the values that must not be present in the field
+   * @param baseFieldName prefix used when reporting the field name
+   * @param result the validation result to append warnings to
+   */
   public static void requireExcludes(final Map<String, Object> metadata, final String key,
       final Set<String> forbiddenValues, final String baseFieldName, final ValidationResult result) {
     final Set<String> actual = asStringSet(metadata.get(key));
@@ -128,7 +143,15 @@ public final class SwedenConnectMetadataRules {
     }
   }
 
-  /** Warns unless the metadata field {@code key} is present and equal to {@code expected}. */
+  /**
+   * Warns unless the metadata field {@code key} is present and equal to {@code expected}.
+   *
+   * @param metadata the metadata map to read {@code key} from
+   * @param key the metadata field to check
+   * @param expected the value {@code key} must equal
+   * @param baseFieldName prefix used when reporting the field name
+   * @param result the validation result to append warnings to
+   */
   public static void requireValueEquals(final Map<String, Object> metadata, final String key,
       final Object expected, final String baseFieldName, final ValidationResult result) {
     final Object actual = metadata.get(key);
@@ -141,6 +164,12 @@ public final class SwedenConnectMetadataRules {
   /**
    * Warns if {@code presentKey} has a non-blank value but {@code alsoRequiredKey} does not (e.g.
    * {@code id_token_encrypted_response_enc} requires {@code id_token_encrypted_response_alg}).
+   *
+   * @param metadata the metadata map to read both keys from
+   * @param presentKey the field whose presence triggers the dependency
+   * @param alsoRequiredKey the field that must also be present when {@code presentKey} is
+   * @param baseFieldName prefix used when reporting the field name
+   * @param result the validation result to append warnings to
    */
   public static void requireIfPresentThenPresent(final Map<String, Object> metadata, final String presentKey,
       final String alsoRequiredKey, final String baseFieldName, final ValidationResult result) {
@@ -158,6 +187,12 @@ public final class SwedenConnectMetadataRules {
   /**
    * For every scope declared in {@code scopeKey} that has a known (non-empty) entry in {@link #SCOPE_CLAIMS}, warns
    * about any of its claims missing from {@code claimsKey}.
+   *
+   * @param metadata the metadata map to read both keys from
+   * @param scopeKey the array-valued metadata field listing declared scopes
+   * @param claimsKey the array-valued metadata field listing declared claims
+   * @param baseFieldName prefix used when reporting the field name
+   * @param result the validation result to append warnings to
    */
   public static void requireScopeClaims(final Map<String, Object> metadata, final String scopeKey,
       final String claimsKey, final String baseFieldName, final ValidationResult result) {
@@ -181,6 +216,12 @@ public final class SwedenConnectMetadataRules {
   /**
    * Validates a multilingual claim: the base claim plus its {@code #sv} and {@code #en} variants must all be
    * present (per Sweden Connect's multilingual parameter rule).
+   *
+   * @param metadata the metadata map to read the claim from
+   * @param baseFieldName prefix used when reporting the field name
+   * @param claimName the base name of the multilingual claim, e.g. {@code organization_name}
+   * @param propertyValidators the validator factory to build field checks with
+   * @param result the validation result to append warnings to
    */
   public static void validateMultilingual(final Map<String, Object> metadata, final String baseFieldName,
       final String claimName, final PropertyValidators propertyValidators, final ValidationResult result) {
@@ -194,6 +235,11 @@ public final class SwedenConnectMetadataRules {
    * Validates the metadata fields required from both RPs and OPs: {@code organization_name} (multilingual),
    * {@code organization_identifier}, {@code organization_uri}, {@code display_name}, {@code logo_uri},
    * {@code contacts}, {@code description}, {@code policy_uri} and {@code information_uri}.
+   *
+   * @param metadata the metadata map to read the common fields from
+   * @param baseFieldName prefix used when reporting field names
+   * @param propertyValidators the validator factory to build field checks with
+   * @param result the validation result to append warnings to
    */
   public static void validateCommonFields(final Map<String, Object> metadata, final String baseFieldName,
       final PropertyValidators propertyValidators, final ValidationResult result) {
@@ -238,6 +284,13 @@ public final class SwedenConnectMetadataRules {
    * which of {@code jwks}/{@code jwks_uri} is the primary requirement for the calling entity type - at least one of
    * them must always be present), plus the optional {@code signed_jwks_uri} and, when {@code jwks} is present, its
    * key material (kid presence, no private keys).
+   *
+   * @param metadata the metadata map to read the key fields from
+   * @param baseFieldName prefix used when reporting field names
+   * @param propertyValidators the validator factory to build field checks with
+   * @param jwksRequired whether {@code jwks} is the entity type's primary key publication requirement
+   * @param jwksUriRequired whether {@code jwks_uri} is the entity type's primary key publication requirement
+   * @param result the validation result to append warnings to
    */
   public static void validateKeyMaterial(final Map<String, Object> metadata, final String baseFieldName,
       final PropertyValidators propertyValidators, final boolean jwksRequired, final boolean jwksUriRequired,

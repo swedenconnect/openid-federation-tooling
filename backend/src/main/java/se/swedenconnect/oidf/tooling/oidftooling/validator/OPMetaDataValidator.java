@@ -101,10 +101,10 @@ public class OPMetaDataValidator implements MetadataValidator {
 
     SwedenConnectMetadataRules.requireSuperset(metadata, "subject_types_supported", Set.of("public"),
         baseFiledName, result);
-    if (metadata.get("subject_types_supported") == null
-        || !metadata.get("subject_types_supported").toString().contains("pairwise")) {
+    final Object subjectTypesSupported = metadata.get("subject_types_supported");
+    if (subjectTypesSupported == null || !subjectTypesSupported.toString().contains("pairwise")) {
       result.addResult(ValidationResult.Level.WARNING, baseFiledName + "subject_types_supported",
-          "It is recommended that 'pairwise' is also supported", String.valueOf(metadata.get("subject_types_supported")));
+          "It is recommended that 'pairwise' is also supported", String.valueOf(subjectTypesSupported));
     }
 
     SwedenConnectMetadataRules.requireSuperset(metadata, "token_endpoint_auth_methods_supported",
