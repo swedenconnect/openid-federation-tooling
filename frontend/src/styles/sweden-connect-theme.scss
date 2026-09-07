@@ -1,0 +1,44 @@
+/**
+ * Design tokens copied from the Sweden Connect Sandbox site
+ * (https://sandbox.swedenconnect.se/home/index.html) so this tool shares its look
+ * and feel: colors, typography and the focus-visible indicator.
+ */
+
+:root {
+  --sc-text: #292a2b;
+  --sc-text-muted: #707070;
+  --sc-outline: #2b2a29;
+
+  --sc-accent: #5a6751;
+  --sc-accent-light: #657c54;
+  --sc-link-hover: #5a5856;
+
+  --sc-bg: #ffffff;
+  --sc-bg-frame: #f3f3f3;
+  --sc-bg-offwhite: #eff0ee;
+  --sc-border: #e8e8e8;
+
+  --sc-terracotta: #cd7a6e;
+  --sc-terracotta-tint: #f7e4e1;
+  --sc-sand: #d59151;
+  --sc-sand-tint: #fbf3eb;
+
+  --sc-font-family: "Ubuntu", "Helvetica Neue", Arial, sans-serif;
+  --sc-border-width: 2px;
+}
+
+html, body {
+  font-family: var(--sc-font-family);
+}
+
+/* The most recognisable detail of the Sweden Connect design, and an
+   accessibility feature: a bold dotted outline instead of Vuetify's default
+   focus ring. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+.v-btn:focus-visible {
+  outline: 3px dotted var(--sc-outline) !important;
+  outline-offset: 3px;
+  box-shadow: none !important;
+}
