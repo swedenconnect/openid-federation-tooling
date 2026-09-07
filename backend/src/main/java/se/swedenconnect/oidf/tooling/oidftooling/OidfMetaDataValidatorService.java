@@ -41,6 +41,7 @@ import se.swedenconnect.oidf.tooling.validation.MetadataValidator;
 import se.swedenconnect.oidf.tooling.validation.PropertyValidationFailException;
 import se.swedenconnect.oidf.tooling.validation.PropertyValidator;
 import se.swedenconnect.oidf.tooling.validation.PropertyValidators;
+import se.swedenconnect.oidf.tooling.validation.SsrfGuard;
 import se.swedenconnect.oidf.tooling.validation.VariabelValueResolver;
 
 import java.io.BufferedReader;
@@ -73,11 +74,30 @@ public class OidfMetaDataValidatorService {
   final static ObjectMapper mapper = new ObjectMapper();
 
   final PropertyValidators propertyValidators = new PropertyValidators();
-  final List<MetadataValidator> metadataValidators = List.of(new RPMetaDataValidator(),
-      new OPMetaDataValidator(),
-      new SamlMetaDataValidator(),
-      new FederationMetaDataValidator(),
-      new DefaultMetaDataValidator());
+  final SsrfGuard ssrfGuard;
+  final List<MetadataValidator> metadataValidators;
+
+  /**
+   * Constructs an instance of OidfMetaDataValidatorService with the default, most restrictive {@link SsrfGuard}.
+   */
+  public OidfMetaDataValidatorService() {
+    this(new SsrfGuard());
+  }
+
+  /**
+   * Constructs an instance of OidfMetaDataValidatorService using the given {@link SsrfGuard} configuration for
+   * outbound calls made while resolving entity ids and validating metadata (e.g. pinging {@code logo_uri}).
+   *
+   * @param ssrfGuard the guard used to block outbound calls to internal/private networks
+   */
+  public OidfMetaDataValidatorService(final SsrfGuard ssrfGuard) {
+    this.ssrfGuard = ssrfGuard;
+    this.metadataValidators = List.of(new RPMetaDataValidator(ssrfGuard),
+        new OPMetaDataValidator(ssrfGuard),
+        new SamlMetaDataValidator(ssrfGuard),
+        new FederationMetaDataValidator(ssrfGuard),
+        new DefaultMetaDataValidator());
+  }
 
   /**
    * Validates the given metadata based on its format. The method identifies the type of metadata (URL, JWT, or JSON)
@@ -123,6 +143,7 @@ public class OidfMetaDataValidatorService {
     HttpURLConnection connection = null;
     try {
       final URL url = URI.create(entityId + "/.well-known/openid-federation").toURL();
+      this.ssrfGuard.assertSafeToConnect(url);
       connection = (HttpURLConnection) url.openConnection();
       connection.setInstanceFollowRedirects(false);
       connection.setRequestMethod("GET");
@@ -142,6 +163,10 @@ public class OidfMetaDataValidatorService {
           .ifPresent(result.warn());
       return this.validateMetadataJWT(this.readLimitedBody(connection.getInputStream(), 10000));
 
+    }
+    catch (final SecurityException e) {
+      result.addResult(ValidationResult.Level.ERROR, key, "Blocked request: " + e.getMessage(), "");
+      return result;
     }
     catch (final IOException e) {
       result.addResult(ValidationResult.Level.ERROR, key,

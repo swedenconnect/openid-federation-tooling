@@ -19,6 +19,7 @@ import se.swedenconnect.oidf.tooling.domain.ValidationResult;
 import se.swedenconnect.oidf.tooling.validation.MetadataValidator;
 import se.swedenconnect.oidf.tooling.validation.PingHttpValidator;
 import se.swedenconnect.oidf.tooling.validation.PropertyValidators;
+import se.swedenconnect.oidf.tooling.validation.SsrfGuard;
 import se.swedenconnect.oidf.tooling.validation.VariabelValueResolver;
 
 import java.util.Map;
@@ -37,10 +38,20 @@ public class OPMetaDataValidator implements MetadataValidator {
   final PropertyValidators propertyValidators = new PropertyValidators();
 
   /**
-   * Constructs an instance of OPMetaDataValidator.
+   * Constructs an instance of OPMetaDataValidator with the default, most restrictive {@link SsrfGuard}.
    */
   public OPMetaDataValidator() {
-    this.propertyValidators.registerValidator(new PingHttpValidator());
+    this(new SsrfGuard());
+  }
+
+  /**
+   * Constructs an instance of OPMetaDataValidator using the given {@link SsrfGuard} configuration for outbound
+   * calls (e.g. pinging {@code logo_uri}).
+   *
+   * @param ssrfGuard the guard used to block outbound calls to internal/private networks
+   */
+  public OPMetaDataValidator(final SsrfGuard ssrfGuard) {
+    this.propertyValidators.registerValidator(new PingHttpValidator(ssrfGuard));
   }
 
   @Override

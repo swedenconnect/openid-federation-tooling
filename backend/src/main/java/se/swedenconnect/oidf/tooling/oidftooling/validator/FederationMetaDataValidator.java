@@ -19,6 +19,7 @@ import se.swedenconnect.oidf.tooling.domain.ValidationResult;
 import se.swedenconnect.oidf.tooling.validation.MetadataValidator;
 import se.swedenconnect.oidf.tooling.validation.PingHttpValidator;
 import se.swedenconnect.oidf.tooling.validation.PropertyValidators;
+import se.swedenconnect.oidf.tooling.validation.SsrfGuard;
 import se.swedenconnect.oidf.tooling.validation.VariabelValueResolver;
 
 import java.util.Map;
@@ -34,10 +35,20 @@ public class FederationMetaDataValidator implements MetadataValidator {
   final PropertyValidators propertyValidators = new PropertyValidators();
 
   /**
-   * Constructs an instance of FederationMetaDataValidator.
+   * Constructs an instance of FederationMetaDataValidator with the default, most restrictive {@link SsrfGuard}.
    */
   public FederationMetaDataValidator() {
-    this.propertyValidators.registerValidator(new PingHttpValidator());
+    this(new SsrfGuard());
+  }
+
+  /**
+   * Constructs an instance of FederationMetaDataValidator using the given {@link SsrfGuard} configuration for
+   * outbound calls (e.g. pinging the federation endpoints).
+   *
+   * @param ssrfGuard the guard used to block outbound calls to internal/private networks
+   */
+  public FederationMetaDataValidator(final SsrfGuard ssrfGuard) {
+    this.propertyValidators.registerValidator(new PingHttpValidator(ssrfGuard));
   }
 
   @Override
