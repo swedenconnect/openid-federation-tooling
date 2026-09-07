@@ -139,6 +139,29 @@ public class OidfToolingServiceController {
     return this.oidfToolingService.getNodeStructure();
   }
 
+  /**
+   * Retrieves the subordinate statement a parent entity issued about a specific child, i.e. the data behind one
+   * edge in the graph returned by {@link #tree()}.
+   *
+   * @param parent the parent (issuer) entity id of the edge
+   * @param sub the child (subject) entity id of the edge
+   * @return the subordinate statement's header, payload and signature
+   * @throws ParseException if either entity id cannot be parsed
+   */
+  @GetMapping(value = "/subordinate-statement", produces = MediaType.APPLICATION_JSON_VALUE)
+  public ValidationResponseDto.JwtContent subordinateStatement(
+      @RequestParam(required = true, name = "parent") final String parent,
+      @RequestParam(required = true, name = "sub") final String sub) throws ParseException {
+
+    final JWTDecoded jwtDecoded =
+        this.oidfToolingService.getSubordinateStatement(EntityID.parse(parent), EntityID.parse(sub));
+    return ValidationResponseDto.JwtContent.builder()
+        .header(jwtDecoded.getHeader())
+        .payload(jwtDecoded.getPayload())
+        .signature(jwtDecoded.getSignature())
+        .build();
+  }
+
 }
 
 

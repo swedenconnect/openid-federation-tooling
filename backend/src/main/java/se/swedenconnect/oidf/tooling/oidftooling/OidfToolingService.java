@@ -17,6 +17,7 @@ package se.swedenconnect.oidf.tooling.oidftooling;
 
 import com.nimbusds.openid.connect.sdk.federation.api.ResolveSuccessResponse;
 import com.nimbusds.openid.connect.sdk.federation.entities.EntityID;
+import com.nimbusds.openid.connect.sdk.federation.entities.EntityStatement;
 import com.nimbusds.openid.connect.sdk.federation.entities.EntityType;
 import se.swedenconnect.oidf.tooling.config.OidfToolingProperties;
 import se.swedenconnect.oidf.tooling.domain.JWTDecoded;
@@ -96,6 +97,27 @@ public class OidfToolingService {
     this.graphBuilder.start(this.oidfTooling.getTrustAnchorEntityId());
     return this.graphBuilder.getGraph();
 
+  }
+
+  /**
+   * Retrieves the subordinate statement a parent entity issued about a specific child, as discovered during the
+   * last federation walk (i.e. the edge between them in the graph from {@link #getNodeStructure()}).
+   *
+   * @param parent the parent (issuer) entity id
+   * @param child the child (subject) entity id
+   * @return the decoded subordinate statement, including its header, payload and signature
+   * @throws IllegalArgumentException if no such edge exists in the currently served graph
+   */
+  public JWTDecoded getSubordinateStatement(final EntityID parent, final EntityID child) {
+    final EntityStatement statement = this.graphBuilder.getSubordinateStatement(parent, child)
+        .orElseThrow(() -> new IllegalArgumentException(
+            "No subordinate statement found for parent=%s child=%s".formatted(parent, child)));
+
+    return JWTDecoded.builder()
+        .header(statement.getSignedStatement().getHeader().toJSONObject())
+        .signature(statement.getSignedStatement().getSignature().toString())
+        .payload(statement.getClaimsSet().toJSONObject())
+        .build();
   }
 
 }

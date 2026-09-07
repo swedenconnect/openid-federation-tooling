@@ -7,6 +7,9 @@ import {Background} from '@vue-flow/background'
 import {Controls} from '@vue-flow/controls'
 import '@vue-flow/controls/dist/style.css'
 import ToolbarNode from '../components/ToolbarNode.vue'
+import VueJsonPretty from 'vue-json-pretty'
+import 'vue-json-pretty/lib/styles.css'
+import { extractErrorDetail } from '@/utils/apiError'
 
 import dagre from 'dagre'
 
@@ -15,6 +18,36 @@ const edges = ref([])
 
 const {setNodes, setEdges, fitView} = useVueFlow()
 const containerHeight = ref(0)
+
+const edgeDialogOpen = ref(false)
+const edgeDialogLoading = ref(false)
+const edgeDialogError = ref(null)
+const edgeDialogData = ref(null)
+const edgeDialogParent = ref('')
+const edgeDialogChild = ref('')
+
+async function onEdgeClick({ edge }) {
+  edgeDialogParent.value = edge.source
+  edgeDialogChild.value = edge.target
+  edgeDialogOpen.value = true
+  edgeDialogLoading.value = true
+  edgeDialogError.value = null
+  edgeDialogData.value = null
+
+  try {
+    const url = `api/subordinate-statement?parent=${encodeURIComponent(edge.source)}&sub=${encodeURIComponent(edge.target)}`
+    const r = await fetch(url)
+    const text = await r.text()
+    if (!r.ok) {
+      throw new Error(extractErrorDetail(text) || `Serverfel (${r.status})`)
+    }
+    edgeDialogData.value = JSON.parse(text)
+  } catch (e) {
+    edgeDialogError.value = e.message
+  } finally {
+    edgeDialogLoading.value = false
+  }
+}
 function calcWidth(label){
   return label.length * 8 + 24;
 }
@@ -111,7 +144,8 @@ onBeforeUnmount(() => {
 <template>
   <div :style="{ width: '100%', height: containerHeight + 'px' }">
     <VueFlow :nodes="nodes"
-             :edges="edges">
+             :edges="edges"
+             @edge-click="onEdgeClick">
       <template #node-menu="props">
         <ToolbarNode :id="props.id" :data="props.data" />
       </template>
@@ -120,5 +154,29 @@ onBeforeUnmount(() => {
 
     </VueFlow>
   </div>
+
+  <v-dialog v-model="edgeDialogOpen" max-width="900" scrollable>
+    <v-card>
+      <v-card-title class="d-flex align-center">
+        Subordinate statement
+        <v-spacer />
+        <v-btn icon variant="text" size="small" @click="edgeDialogOpen = false">
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </v-card-title>
+      <v-card-subtitle class="text-wrap">{{ edgeDialogParent }} &rarr; {{ edgeDialogChild }}</v-card-subtitle>
+
+      <v-card-text style="max-height: 70vh">
+        <v-alert v-if="edgeDialogError" type="error" class="mb-4">{{ edgeDialogError }}</v-alert>
+        <v-progress-circular v-else-if="edgeDialogLoading" indeterminate color="primary" />
+        <template v-else-if="edgeDialogData">
+          <div class="text-subtitle-2 mt-2">Header</div>
+          <vue-json-pretty :data="edgeDialogData.header" :deep="3" />
+          <div class="text-subtitle-2 mt-4">Payload</div>
+          <vue-json-pretty :data="edgeDialogData.payload" :deep="3" />
+        </template>
+      </v-card-text>
+    </v-card>
+  </v-dialog>
 </template>
 
