@@ -25,10 +25,12 @@ import se.swedenconnect.oidf.tooling.integration.OidfServiceIntegration;
 import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Building av tree of the federation
@@ -38,10 +40,13 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class GraphBuilder {
 
-  final Map<EntityID, EntityStatement> entityStatements = new ConcurrentHashMap<>();
-  final List<Edges> edges = new ArrayList<>();
   final OidfServiceIntegration oidfServiceIntegration;
-  LocalDateTime updated;
+
+  /** The graph currently served by {@link #getGraph()} - always readable without blocking. */
+  private final AtomicReference<Snapshot> snapshot = new AtomicReference<>(Snapshot.EMPTY);
+
+  /** Guards against starting more than one background refresh at a time. */
+  private final AtomicBoolean refreshing = new AtomicBoolean(false);
 
   /**
    * Constructs a GraphBuilder that facilitates the creation and management of a graph representing relationships
@@ -55,23 +60,47 @@ public class GraphBuilder {
   }
 
   /**
-   * Start walking the federation
+   * Triggers a walk of the federation if the currently served graph is missing or stale (older than 5 minutes). The
+   * walk runs on a background virtual thread and never blocks the caller; {@link #getGraph()} keeps returning the
+   * previous snapshot - even if the refresh fails - until a new one is ready. At most one refresh runs at a time; a
+   * call made while a refresh is already in progress is a no-op.
    *
    * @param trustAnchor Startingpoint
    */
-  public synchronized void start(final EntityID trustAnchor) {
-    if (!this.edges.isEmpty() && this.updated.isAfter(LocalDateTime.now().minusMinutes(5))) {
+  public void start(final EntityID trustAnchor) {
+    if (this.snapshot.get().isFresh()) {
       return;
     }
-    this.entityStatements.clear();
-    this.edges.clear();
-    final EntityStatement entityStatement = this.oidfServiceIntegration.entitConfiguration(trustAnchor);
-    this.newNode(null, entityStatement);
-    this.recursive(entityStatement);
-    this.updated = LocalDateTime.now();
+    if (!this.refreshing.compareAndSet(false, true)) {
+      // A refresh is already in flight - the current snapshot keeps being served until it completes.
+      return;
+    }
+    Thread.ofVirtual().name("graph-builder-refresh").start(() -> {
+      try {
+        this.refresh(trustAnchor);
+      }
+      catch (final Exception e) {
+        log.warn("Failed to refresh federation graph for trust anchor {}", trustAnchor, e);
+      }
+      finally {
+        this.refreshing.set(false);
+      }
+    });
   }
 
-  private void recursive(final EntityStatement entityStatementParent) {
+  private void refresh(final EntityID trustAnchor) {
+    final Map<EntityID, EntityStatement> entityStatements = new HashMap<>();
+    final List<Edges> edges = new ArrayList<>();
+
+    final EntityStatement entityStatement = this.oidfServiceIntegration.entitConfiguration(trustAnchor);
+    this.newNode(entityStatements, null, entityStatement);
+    this.recursive(entityStatements, edges, entityStatement);
+
+    this.snapshot.set(new Snapshot(Map.copyOf(entityStatements), List.copyOf(edges), LocalDateTime.now()));
+  }
+
+  private void recursive(final Map<EntityID, EntityStatement> entityStatements, final List<Edges> edges,
+      final EntityStatement entityStatementParent) {
     if (entityStatementParent == null) {
       return;
     }
@@ -94,12 +123,12 @@ public class GraphBuilder {
                     final EntityStatement entityConfiguration = this.oidfServiceIntegration.entitConfiguration(
                         entityStatement.getClaimsSet().getSubjectEntityID());
                     //todo verify signature on edge pointing to entitystatement
-                    this.newNode(entityStatementParent, entityConfiguration);
-                    this.newEdge(entityStatementParent, entityStatement);
-                    this.recursive(entityConfiguration);
+                    this.newNode(entityStatements, entityStatementParent, entityConfiguration);
+                    this.newEdge(edges, entityStatementParent, entityStatement);
+                    this.recursive(entityStatements, edges, entityConfiguration);
                   }
                   catch (final Exception e) {
-                    this.newEdge(entityStatementParent, entityStatement, e);
+                    this.newEdge(edges, entityStatementParent, entityStatement, e);
                     log.info("Error fetching entity statement for entity {}", entityID, e);
                   }
 
@@ -108,16 +137,18 @@ public class GraphBuilder {
     }
   }
 
-  private void newEdge(final EntityStatement parent, final EntityStatement entityStatement) {
-    this.newEdge(parent, entityStatement, null);
+  private void newEdge(final List<Edges> edges, final EntityStatement parent, final EntityStatement entityStatement) {
+    this.newEdge(edges, parent, entityStatement, null);
   }
 
-  private void newEdge(final EntityStatement parent, final EntityStatement entityStatement, final Exception e) {
-    this.edges.add(new Edges(parent == null ? null : parent.getEntityID(), entityStatement.getEntityID(), e));
+  private void newEdge(final List<Edges> edges, final EntityStatement parent, final EntityStatement entityStatement,
+      final Exception e) {
+    edges.add(new Edges(parent == null ? null : parent.getEntityID(), entityStatement.getEntityID(), e));
   }
 
-  private void newNode(final EntityStatement parent, final EntityStatement entityStatement) {
-    this.entityStatements.put(entityStatement.getEntityID(), entityStatement);
+  private void newNode(final Map<EntityID, EntityStatement> entityStatements, final EntityStatement parent,
+      final EntityStatement entityStatement) {
+    entityStatements.put(entityStatement.getEntityID(), entityStatement);
     log.info("Parent: {} Child: {}", parent == null ? null : parent.getEntityID(), entityStatement.getEntityID());
   }
 
@@ -127,16 +158,17 @@ public class GraphBuilder {
    * @return Graph with nodes and edges.
    */
   public Graph getGraph() {
+    final Snapshot current = this.snapshot.get();
     final Graph graph = new Graph();
-    this.entityStatements.forEach((k, v) ->
+    current.entityStatements().forEach((k, v) ->
     {
       final String label = Optional.ofNullable(k.getValue()).map(s -> s.replace("https://", ""))
           .orElse("<NoName>");
       graph.addNode(new Graph.Node(k.getValue(), label));
     });
 
-    this.edges.forEach(edges1 ->
-        graph.addEdge(new Graph.Edge(edges1.parent.toString(), edges1.child.toString())));
+    current.edges().forEach(edge ->
+        graph.addEdge(new Graph.Edge(edge.parent().toString(), edge.child().toString())));
     return graph;
 
   }
@@ -149,6 +181,25 @@ public class GraphBuilder {
    * @param exception an exception associated with the edge, if applicable
    */
   public record Edges(EntityID parent, EntityID child, Exception exception) {
+  }
+
+  /**
+   * Immutable, point-in-time result of a federation walk. Swapped into {@link GraphBuilder#snapshot} only once a
+   * refresh completes successfully, so concurrent readers never observe a partially rebuilt graph.
+   *
+   * @param entityStatements all entities discovered in the walk, keyed by entity id
+   * @param edges the parent/child relationships discovered in the walk
+   * @param updated when this snapshot was built, or {@code null} for {@link #EMPTY}
+   */
+  private record Snapshot(Map<EntityID, EntityStatement> entityStatements, List<Edges> edges,
+      LocalDateTime updated) {
+
+    private static final Snapshot EMPTY = new Snapshot(Map.of(), List.of(), null);
+
+    boolean isFresh() {
+      return !this.edges.isEmpty() && this.updated != null
+          && this.updated.isAfter(LocalDateTime.now().minusMinutes(1));
+    }
   }
 
 }

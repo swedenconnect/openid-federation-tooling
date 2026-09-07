@@ -19,7 +19,6 @@ declare module 'vue-router/auto-routes' {
    */
   export interface RouteNamedMap {
     '/': RouteRecordInfo<'/', '/', Record<never, never>, Record<never, never>>,
-    '/oidfview': RouteRecordInfo<'/oidfview', '/oidfview', Record<never, never>, Record<never, never>>,
     '/resolver': RouteRecordInfo<'/resolver', '/resolver', Record<never, never>, Record<never, never>>,
     '/validate': RouteRecordInfo<'/validate', '/validate', Record<never, never>, Record<never, never>>,
   }
@@ -37,10 +36,6 @@ declare module 'vue-router/auto-routes' {
   export interface _RouteFileInfoMap {
     'src/pages/index.vue': {
       routes: '/'
-      views: never
-    }
-    'src/pages/oidfview.vue': {
-      routes: '/oidfview'
       views: never
     }
     'src/pages/resolver.vue': {

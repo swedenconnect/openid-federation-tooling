@@ -34,7 +34,7 @@
       </v-card-text>
     </v-card>
 
-    <v-card class="pa-1 mb-1" v-if="pl.trust_marks">
+    <v-card class="pa-1 mb-1" v-if="pl.trust_marks && pl.trust_marks.length">
       <v-card-title>Trustmarks</v-card-title>
 
       <v-card-text>
@@ -43,7 +43,7 @@
             v-for="(tm, i) in pl.trust_marks"
             :key="i"
           >
-            <v-list-item-title>{{ tm.trust_mark_id }}</v-list-item-title>
+            <v-list-item-title>{{ tm.trust_mark_type }}</v-list-item-title>
           </v-list-item>
         </v-list>
       </v-card-text>
@@ -155,3 +155,10 @@ const metadataTree = computed(() => {
 
 
 </script>
+
+<style scoped>
+pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+</style>

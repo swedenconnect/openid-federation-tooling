@@ -40,6 +40,7 @@ import { useRoute } from 'vue-router'
 import TopFilterBar from '@/components/TopFilterBar.vue'
 import EntityIdList from "@/components/EntityIdList.vue";
 import ResolverResponseView from "@/components/ResolverResponseView.vue";
+import { extractErrorDetail } from '@/utils/apiError'
 
 const route = useRoute()
 
@@ -83,7 +84,7 @@ function fetchUrls() {
       urls.value = data.urls || data
     })
       .catch(err => {
-        displayError(JSON.parse(err.message).detail);
+        displayError(extractErrorDetail(err.message));
       })
 }
 

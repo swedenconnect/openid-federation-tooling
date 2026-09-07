@@ -4,6 +4,7 @@ import { NodeToolbar } from '@vue-flow/node-toolbar'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import VueJsonPretty from 'vue-json-pretty'
 import 'vue-json-pretty/lib/styles.css'
+import { extractErrorDetail } from '@/utils/apiError'
 
 const props = defineProps(['id', 'data'])
 
@@ -58,7 +59,7 @@ async function fetchValidator(entityId) {
   })
   const text = await r.text()
   if (!r.ok) {
-    throw new Error(`Serverfel (${r.status}): ${text}`)
+    throw new Error(extractErrorDetail(text) || `Serverfel (${r.status})`)
   }
   const data = JSON.parse(text)
   return { data: data.validatedData, subResults: data.subResults || [], success: data.success }
@@ -68,7 +69,7 @@ async function fetchResolve(entityId) {
   const r = await fetch(`api/resolve?sub=${encodeURIComponent(entityId)}`)
   const text = await r.text()
   if (!r.ok) {
-    throw new Error(`Serverfel (${r.status}): ${text}`)
+    throw new Error(extractErrorDetail(text) || `Serverfel (${r.status})`)
   }
   const json = JSON.parse(text)
   return { data: { header: json.header, payload: json.payload }, subResults: [], success: true }

@@ -88,6 +88,7 @@ import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import VueJsonPretty from 'vue-json-pretty';
 import 'vue-json-pretty/lib/styles.css';
+import { extractErrorDetail } from '@/utils/apiError'
 
 const route = useRoute()
 
@@ -139,7 +140,7 @@ async function postData() {
     const text = await r.text()
 
     if (!r.ok) {
-      throw new Error(`Serverfel (${r.status}): ${text}`)
+      throw new Error(extractErrorDetail(text) || `Serverfel (${r.status})`)
     }
 
     const data = JSON.parse(text)

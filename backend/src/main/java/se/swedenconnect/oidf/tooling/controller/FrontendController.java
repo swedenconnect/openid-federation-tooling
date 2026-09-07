@@ -39,8 +39,7 @@ public class FrontendController {
    */
   @GetMapping({
       "/validate",
-      "/resolver",
-      "/oidfview"
+      "/resolver"
   })
   public String forwardToFrontend() {
     return "forward:/";
