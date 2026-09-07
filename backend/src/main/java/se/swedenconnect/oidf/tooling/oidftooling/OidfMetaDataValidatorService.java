@@ -34,6 +34,7 @@ import se.swedenconnect.oidf.tooling.domain.JWTDecoded;
 import se.swedenconnect.oidf.tooling.domain.ValidationResult;
 import se.swedenconnect.oidf.tooling.oidftooling.validator.DefaultMetaDataValidator;
 import se.swedenconnect.oidf.tooling.oidftooling.validator.FederationMetaDataValidator;
+import se.swedenconnect.oidf.tooling.oidftooling.validator.OPMetaDataValidator;
 import se.swedenconnect.oidf.tooling.oidftooling.validator.RPMetaDataValidator;
 import se.swedenconnect.oidf.tooling.oidftooling.validator.SamlMetaDataValidator;
 import se.swedenconnect.oidf.tooling.validation.MetadataValidator;
@@ -73,6 +74,7 @@ public class OidfMetaDataValidatorService {
 
   final PropertyValidators propertyValidators = new PropertyValidators();
   final List<MetadataValidator> metadataValidators = List.of(new RPMetaDataValidator(),
+      new OPMetaDataValidator(),
       new SamlMetaDataValidator(),
       new FederationMetaDataValidator(),
       new DefaultMetaDataValidator());
@@ -325,6 +327,16 @@ public class OidfMetaDataValidatorService {
       subMD.forEach((k, v) -> {
         this.findMetadataValidator(k).validate((Map<String, Object>) v, result);
       });
+
+      final Object opMetadata = subMD.get("openid_provider");
+      if (opMetadata instanceof final Map<?, ?> opMap) {
+        final Object issuer = opMap.get("issuer");
+        final Object entityId = Objects.requireNonNullElse(metadata.get("sub"), metadata.get("iss"));
+        if (issuer != null && entityId != null && !issuer.equals(entityId)) {
+          result.addResult(ValidationResult.Level.WARNING, "metadata.openid_provider.issuer",
+              "issuer must match the Entity Identifier: " + entityId, String.valueOf(issuer));
+        }
+      }
     }
 
     return result;
