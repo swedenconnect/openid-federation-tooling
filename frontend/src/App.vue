@@ -9,7 +9,6 @@
 
         <ul class="sc-nav-links">
           <li><router-link to="/">View</router-link></li>
-          <li><router-link to="/validate">Validator</router-link></li>
           <li><router-link to="/resolver">Resolver</router-link></li>
         </ul>
       </nav>

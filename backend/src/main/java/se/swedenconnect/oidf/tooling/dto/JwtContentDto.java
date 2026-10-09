@@ -11,14 +11,24 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- *  limitations under the License.
+ * limitations under the License.
  */
-package se.swedenconnect.oidf.tooling.validation;
+package se.swedenconnect.oidf.tooling.dto;
+
+import lombok.Builder;
+import lombok.Data;
+
+import java.util.Map;
 
 /**
- * Interface used to register custom builder methods.
+ * Presentation of a JWT
  *
  * @author Per Fredrik Plars
  */
-public interface BuilderExtension {
+@Data
+@Builder
+public class JwtContentDto {
+  Map<String, Object> header;
+  Map<String, Object> payload;
+  String signature;
 }

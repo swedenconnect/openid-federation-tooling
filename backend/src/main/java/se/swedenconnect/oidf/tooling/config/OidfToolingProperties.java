@@ -24,10 +24,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.util.Assert;
 
 import java.net.URI;
-import java.util.List;
-import java.util.Optional;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
+import java.time.Duration;
 
 /**
  * Config classes
@@ -43,7 +40,17 @@ public class OidfToolingProperties {
   private URI discoveryUri;
   private EntityID trustAnchorEntityId;
   private String trustBundleName;
-  private SsrfProtectionProperties ssrfProtection = new SsrfProtectionProperties();
+
+  /**
+   * Connect timeout for outbound federation calls (entity configurations, listings, fetch, resolve, discovery).
+   * Kept short so one unresponsive entity does not stall the whole federation walk.
+   */
+  private Duration httpConnectTimeout = Duration.ofSeconds(2);
+
+  /**
+   * Read timeout for outbound federation calls.
+   */
+  private Duration httpReadTimeout = Duration.ofSeconds(3);
 
   /**
    * Mandatory field validation
@@ -53,41 +60,6 @@ public class OidfToolingProperties {
     Assert.notNull(this.resolverUri, "resolverUri must be set");
     Assert.notNull(this.discoveryUri, "discoveryUri must be set");
     Assert.notNull(this.trustAnchorEntityId, "trustAnchorEntityId must be set");
-    this.ssrfProtection.validate();
-  }
-
-  /**
-   * Controls the SSRF protection applied to outbound calls the service makes on behalf of user-supplied metadata
-   * URLs (entity ids, {@code jwks_uri}, {@code logo_uri}, SAML {@code metadata_endpoint}, ...), so the service
-   * cannot be used to reach or scan internal/private networks.
-   */
-  @Getter
-  @Setter
-  public static class SsrfProtectionProperties {
-    /**
-     * By default, no local/private/link-local IP address ranges can be resolved. Note: setting this to true opens a
-     * security issue - the service can then be used to reach internal network addresses. Intended for local
-     * development or testing only.
-     */
-    private boolean enableLocalIpAddressRanges;
-
-    /**
-     * Regexp block list; if the hostname of a URL the service is about to fetch matches any entry, the request is
-     * denied.
-     */
-    private List<String> blockHostname;
-
-    void validate() {
-      Optional.ofNullable(this.blockHostname).ifPresent(patterns -> patterns.forEach(regex -> {
-        try {
-          Pattern.compile(regex);
-        }
-        catch (final PatternSyntaxException e) {
-          throw new IllegalArgumentException(
-              "Invalid regex in openid.federation.tooling.ssrf-protection.block-hostname: " + regex, e);
-        }
-      }));
-    }
   }
 
 }

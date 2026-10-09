@@ -78,11 +78,11 @@ public class OidfToolingService {
    *
    * @param entityType an {@link Optional} containing the {@link EntityType} to filter the discovery process; if
    *     empty, all entity types will be considered.
-   * @param trustmarkids a {@link List} of {@link EntityID} representing the trustmarks used for discovery
+   * @param trustmarkids a {@link List} of trust mark types used for discovery
    *     filtering.
    * @return a {@link List} of {@link EntityID} containing the discovered entities matching the provided criteria.
    */
-  public List<EntityID> getDiscoverResponse(final Optional<EntityType> entityType, final List<EntityID> trustmarkids) {
+  public List<EntityID> getDiscoverResponse(final Optional<EntityType> entityType, final List<String> trustmarkids) {
     return this.integration.discover(this.oidfTooling.getDiscoveryUri(),
         this.oidfTooling.getTrustAnchorEntityId(), entityType, trustmarkids);
 
@@ -113,6 +113,25 @@ public class OidfToolingService {
         .orElseThrow(() -> new IllegalArgumentException(
             "No subordinate statement found for parent=%s child=%s".formatted(parent, child)));
 
+    return JWTDecoded.builder()
+        .header(statement.getSignedStatement().getHeader().toJSONObject())
+        .signature(statement.getSignedStatement().getSignature().toString())
+        .payload(statement.getClaimsSet().toJSONObject())
+        .build();
+  }
+
+  /**
+   * Retrieves the entity configuration (self-issued entity statement) of an entity. If a parent's subordinate
+   * statement about the entity carries an {@code ec_location}, the configuration is fetched from there; otherwise
+   * from the entity's {@code /.well-known/openid-federation}.
+   *
+   * @param entityId the entity to fetch the configuration for
+   * @return the decoded entity configuration, including its header, payload and signature
+   */
+  public JWTDecoded getEntityConfiguration(final EntityID entityId) {
+    final EntityStatement statement = this.graphBuilder.getEcLocation(entityId)
+        .map(this.integration::entitConfiguration)
+        .orElseGet(() -> this.integration.entitConfiguration(entityId));
     return JWTDecoded.builder()
         .header(statement.getSignedStatement().getHeader().toJSONObject())
         .signature(statement.getSignedStatement().getSignature().toString())

@@ -82,6 +82,9 @@ function fetchUrls() {
       })
     .then(data => {
       urls.value = data.urls || data
+      if (urls.value.length === 0) {
+        errorMsg.value = 'Inga entiteter matchade urvalet.'
+      }
     })
       .catch(err => {
         displayError(extractErrorDetail(err.message));
@@ -105,7 +108,7 @@ function resolveUrl(u) {
       jwtPayload.value = data.payload
     })
     .catch(err => {
-      displayError(JSON.parse(err.message).detail);
+      displayError(extractErrorDetail(err.message));
     })
 }
 </script>
