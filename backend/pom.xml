@@ -156,6 +156,13 @@
 
     </dependencies>
 
+    <properties>
+        <frontend.skip>false</frontend.skip>
+        <frontend.dir>${project.basedir}/../frontend</frontend.dir>
+        <frontend.maven.plugin.version>1.15.1</frontend.maven.plugin.version>
+        <frontend.node.version>v22.12.0</frontend.node.version>
+    </properties>
+
     <build>
         <resources>
             <resource>
@@ -175,8 +182,57 @@
                     <include>static/**</include>
                 </includes>
             </resource>
+            <!-- Built frontend (vite output) is packaged as static content -->
+            <resource>
+                <filtering>false</filtering>
+                <directory>${frontend.dir}/dist</directory>
+                <targetPath>static</targetPath>
+            </resource>
         </resources>
         <plugins>
+
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <version>${frontend.maven.plugin.version}</version>
+                <configuration>
+                    <skip>${frontend.skip}</skip>
+                    <workingDirectory>${frontend.dir}</workingDirectory>
+                    <installDirectory>${project.build.directory}/frontend-node</installDirectory>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>install-node-and-npm</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>install-node-and-npm</goal>
+                        </goals>
+                        <configuration>
+                            <nodeVersion>${frontend.node.version}</nodeVersion>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>npm-ci</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>ci</arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>npm-build</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>run build</arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

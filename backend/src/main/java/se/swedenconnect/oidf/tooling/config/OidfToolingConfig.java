@@ -26,9 +26,7 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.util.Assert;
 import org.springframework.web.client.RestClient;
 import se.swedenconnect.oidf.tooling.integration.OidfServiceIntegration;
-import se.swedenconnect.oidf.tooling.oidftooling.OidfMetaDataValidatorService;
 import se.swedenconnect.oidf.tooling.oidftooling.OidfToolingService;
-import se.swedenconnect.oidf.tooling.validation.SsrfGuard;
 
 import javax.net.ssl.SSLContext;
 import java.net.http.HttpClient;
@@ -65,10 +63,14 @@ public class OidfToolingConfig {
     final String trustBundleAlias = properties.getTrustBundleName();
 
     this.settingSSLTrustContext(ssl, httpClientBuilder, trustBundleAlias);
+    httpClientBuilder.connectTimeout(properties.getHttpConnectTimeout());
+
+    final JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClientBuilder.build());
+    requestFactory.setReadTimeout(properties.getHttpReadTimeout());
 
     return RestClient.builder()
         .observationRegistry(observationRegistry)
-        .requestFactory(new JdkClientHttpRequestFactory(httpClientBuilder.build()));
+        .requestFactory(requestFactory);
   }
 
   @Bean
@@ -80,22 +82,6 @@ public class OidfToolingConfig {
   OidfToolingService oidfToolingService(final OidfToolingProperties properties,
       final OidfServiceIntegration oidfServiceIntegration) {
     return new OidfToolingService(oidfServiceIntegration, properties);
-  }
-
-  /**
-   * Provides the metadata validator, configured with the SSRF guard from
-   * {@code openid.federation.tooling.ssrf-protection} so outbound calls the validator makes on behalf of
-   * user-supplied URLs cannot be used to reach internal/private networks.
-   *
-   * @param properties the application properties holding the SSRF protection configuration.
-   * @return a configured {@link OidfMetaDataValidatorService} instance.
-   */
-  @Bean
-  OidfMetaDataValidatorService oidfMetaDataValidator(final OidfToolingProperties properties) {
-    final OidfToolingProperties.SsrfProtectionProperties ssrfProtection = properties.getSsrfProtection();
-    final SsrfGuard ssrfGuard = new SsrfGuard(ssrfProtection.isEnableLocalIpAddressRanges(),
-        ssrfProtection.getBlockHostname());
-    return new OidfMetaDataValidatorService(ssrfGuard);
   }
 
   private void settingSSLTrustContext(

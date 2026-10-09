@@ -101,21 +101,20 @@ public class OidfServiceIntegration {
    * @param discoverUri the URI of the discovery endpoint to query
    * @param trustAnchor the identifier of the trust anchor to be used in the discovery process
    * @param entityType the optional entity type to filter the results by
-   * @param trustmarks a list of trustmark identifiers to filter the results by
+   * @param trustmarks a list of trust mark types (identifiers) to filter the results by
    * @return a list of entity identifiers returned by the discovery endpoint
    */
   public List<EntityID> discover(final URI discoverUri,
       final EntityID trustAnchor,
       final Optional<EntityType> entityType,
-      final List<EntityID> trustmarks) {
+      final List<String> trustmarks) {
 
     final UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUri(discoverUri);
     entityType.ifPresent(et -> uriBuilder.queryParam("entity_type", et.getValue()));
 
     uriBuilder.queryParam("trust_anchor", trustAnchor.getValue());
     if (trustmarks != null && !trustmarks.isEmpty()) {
-      uriBuilder.queryParam("trust_marks", trustmarks.stream().map(EntityID::getValue)
-          .reduce((a, b) -> a + "," + b));
+      uriBuilder.queryParam("trust_mark_type", trustmarks);
     }
     final URI uri = uriBuilder.build().toUri();
     log.debug("Calling discovery endpoint: {}", uri);
@@ -173,6 +172,17 @@ public class OidfServiceIntegration {
         .path("/.well-known/openid-federation");
     final URI uri = uriBuilder.build().toUri();
     return this.callEntityStatement(uri);
+  }
+
+  /**
+   * Fetches an entity configuration from an explicit location, e.g. the {@code ec_location} claim of a subordinate
+   * statement, instead of the default {@code /.well-known/openid-federation} location.
+   *
+   * @param location the URI the entity configuration is served from
+   * @return the parsed entity configuration
+   */
+  public EntityStatement entitConfiguration(final URI location) {
+    return this.callEntityStatement(location);
   }
 
   /**
