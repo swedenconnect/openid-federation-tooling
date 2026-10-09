@@ -20,18 +20,16 @@ import com.nimbusds.openid.connect.sdk.federation.entities.EntityID;
 import com.nimbusds.openid.connect.sdk.federation.entities.EntityType;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import se.swedenconnect.oidf.tooling.domain.JWTDecoded;
-import se.swedenconnect.oidf.tooling.domain.ValidationResult;
-import se.swedenconnect.oidf.tooling.dto.ValidationResponseDto;
+import se.swedenconnect.oidf.tooling.dto.JwtContentDto;
 import se.swedenconnect.oidf.tooling.oidftooling.tree.Graph;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -44,64 +42,29 @@ import java.util.Optional;
 public class OidfToolingServiceController {
 
   private final OidfToolingService oidfToolingService;
-  private final OidfMetaDataValidatorService oidfMetaDataValidatorService;
 
   /**
    * Constructor for the TestServiceController class.
    *
    * @param oidfToolingService an instance of oidfToolingService
-   * @param oidfMetaDataValidatorService an instance of OIDFMetaDataValidator used to validate metadata.
    */
-  public OidfToolingServiceController(final OidfToolingService oidfToolingService,
-      final OidfMetaDataValidatorService oidfMetaDataValidatorService) {
+  public OidfToolingServiceController(final OidfToolingService oidfToolingService) {
     this.oidfToolingService = oidfToolingService;
-    this.oidfMetaDataValidatorService = oidfMetaDataValidatorService;
   }
 
   /**
-   * Validates the provided metadata.
+   * Retrieves the entity configuration (the self-issued entity statement) of an entity.
    *
-   * @param metadata the metadata string to be validated
-   * @return a ResponseEntity containing a ValidationResponseDto object with the validation results
+   * @param subject the entity id to fetch the entity configuration for
+   * @return the entity configuration's header, payload and signature
+   * @throws ParseException if the entity id cannot be parsed
    */
-  @PostMapping(value = "/validator", produces = MediaType.APPLICATION_JSON_VALUE)
-  public ValidationResponseDto validateMetadata(@RequestBody final String metadata) {
-    final ValidationResult result = this.oidfMetaDataValidatorService.validate(metadata);
-    final JWTDecoded jwtDecoded = Optional.ofNullable(result.getValidatedData()).orElse(JWTDecoded.builder().build());
-
-    return ValidationResponseDto.builder()
-        .validatedData(ValidationResponseDto.JwtContent.builder()
-            .header(jwtDecoded.getHeader())
-            .payload(jwtDecoded.getPayload())
-            .signature(jwtDecoded.getSignature())
-            .build())
-        .success(result.isSuccess())
-        .subResults(result.getSubResults()
-            .stream()
-            .map(subResult -> ValidationResponseDto.ValidationStatus.builder()
-                .level(subResult.level().name())
-                .type(subResult.type())
-                .message(subResult.message())
-                .originalInputValue(subResult.originalInputValue())
-                .build())
-            .toList())
-        .build();
-
-  }
-
-  /**
-   * Resolves a validation request by performing metadata validation and returning the results.
-   *
-   * @param subject A required subject identifier used during the validation process.
-   * @return A {@link ValidationResponseDto} object containing the validation results, including success status,
-   *     validated data, and any sub-results of the validation process.
-   */
-  @GetMapping(value = "/resolve", produces = MediaType.APPLICATION_JSON_VALUE)
-  public ValidationResponseDto.JwtContent resolve(
+  @GetMapping(value = "/entity-statement", produces = MediaType.APPLICATION_JSON_VALUE)
+  public JwtContentDto entityStatement(
       @RequestParam(required = true, name = "sub") final String subject) throws ParseException {
 
-    final JWTDecoded jwtDecoded = this.oidfToolingService.getResolverResponse(EntityID.parse(subject));
-    return ValidationResponseDto.JwtContent.builder()
+    final JWTDecoded jwtDecoded = this.oidfToolingService.getEntityConfiguration(EntityID.parse(subject));
+    return JwtContentDto.builder()
         .header(jwtDecoded.getHeader())
         .payload(jwtDecoded.getPayload())
         .signature(jwtDecoded.getSignature())
@@ -109,24 +72,47 @@ public class OidfToolingServiceController {
   }
 
   /**
-   * Handles the discovery endpoint and returns a list of string values based on the provided parameters.
+   * Resolves an entity through the configured resolver.
    *
-   * @param entityid optional parameter specifying the entity ID
-   * @param entityType optional parameter specifying the type of the entity
-   * @param trustmark optional list of trustmarks for the discovery process
-   * @return a list of strings derived from the discovery response
+   * @param subject A required subject identifier to resolve.
+   * @return the resolve response's header, payload and signature.
+   */
+  @GetMapping(value = "/resolve", produces = MediaType.APPLICATION_JSON_VALUE)
+  public JwtContentDto resolve(
+      @RequestParam(required = true, name = "sub") final String subject) throws ParseException {
+
+    final JWTDecoded jwtDecoded = this.oidfToolingService.getResolverResponse(EntityID.parse(subject));
+    return JwtContentDto.builder()
+        .header(jwtDecoded.getHeader())
+        .payload(jwtDecoded.getPayload())
+        .signature(jwtDecoded.getSignature())
+        .build();
+  }
+
+  /**
+   * Handles the discovery endpoint and returns the entity ids found, narrowed by the optional filters.
+   *
+   * @param entityid optional text; only entity ids containing it (case-insensitive) are returned
+   * @param entityType optional entity type to filter on
+   * @param trustmark optional trust mark type to filter on
+   * @return a list of entity ids derived from the discovery response
    */
   @GetMapping(value = "/discovery", produces = MediaType.APPLICATION_JSON_VALUE)
   public List<String> discovery(
       @RequestParam(required = false, name = "entityid") final String entityid,
       @RequestParam(required = false, name = "entityType") final String entityType,
-      @RequestParam(required = false, name = "trustmarks") final List<String> trustmark
+      @RequestParam(required = false, name = "trustMark") final String trustmark
   ) {
+    final String needle = Optional.ofNullable(entityid).map(String::trim).filter(s -> !s.isEmpty())
+        .map(s -> s.toLowerCase(Locale.ROOT)).orElse(null);
 
     return this.oidfToolingService.getDiscoverResponse(
-        Optional.ofNullable(entityType).filter(s -> !s.isBlank()).map(EntityType::new),
-        Collections.emptyList()).stream().map(EntityID::getValue).toList();
-
+            Optional.ofNullable(entityType).filter(s -> !s.isBlank()).map(EntityType::new),
+            Optional.ofNullable(trustmark).filter(s -> !s.isBlank()).map(List::of).orElse(Collections.emptyList()))
+        .stream()
+        .map(EntityID::getValue)
+        .filter(id -> needle == null || id.toLowerCase(Locale.ROOT).contains(needle))
+        .toList();
   }
 
   /**
@@ -149,13 +135,13 @@ public class OidfToolingServiceController {
    * @throws ParseException if either entity id cannot be parsed
    */
   @GetMapping(value = "/subordinate-statement", produces = MediaType.APPLICATION_JSON_VALUE)
-  public ValidationResponseDto.JwtContent subordinateStatement(
+  public JwtContentDto subordinateStatement(
       @RequestParam(required = true, name = "parent") final String parent,
       @RequestParam(required = true, name = "sub") final String sub) throws ParseException {
 
     final JWTDecoded jwtDecoded =
         this.oidfToolingService.getSubordinateStatement(EntityID.parse(parent), EntityID.parse(sub));
-    return ValidationResponseDto.JwtContent.builder()
+    return JwtContentDto.builder()
         .header(jwtDecoded.getHeader())
         .payload(jwtDecoded.getPayload())
         .signature(jwtDecoded.getSignature())

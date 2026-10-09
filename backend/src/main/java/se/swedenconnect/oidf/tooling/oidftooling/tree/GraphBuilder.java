@@ -121,8 +121,7 @@ public class GraphBuilder {
                   final EntityStatement entityStatement = this.oidfServiceIntegration.entityStatement(uri, entityID);
 
                   try {
-                    final EntityStatement entityConfiguration = this.oidfServiceIntegration.entitConfiguration(
-                        entityStatement.getClaimsSet().getSubjectEntityID());
+                    final EntityStatement entityConfiguration = this.fetchEntityConfiguration(entityStatement);
                     //todo verify signature on edge pointing to entitystatement
                     this.newNode(entityStatements, entityStatementParent, entityConfiguration);
                     this.newEdge(edges, entityStatementParent, entityStatement);
@@ -136,6 +135,43 @@ public class GraphBuilder {
                 });
           });
     }
+  }
+
+  /**
+   * Fetches the entity configuration for the subject of a subordinate statement. If the statement carries an
+   * {@code ec_location} claim the configuration is fetched from there, otherwise from the subject's
+   * {@code /.well-known/openid-federation}.
+   */
+  private EntityStatement fetchEntityConfiguration(final EntityStatement subordinateStatement) {
+    return this.ecLocation(subordinateStatement)
+        .map(this.oidfServiceIntegration::entitConfiguration)
+        .orElseGet(() -> this.oidfServiceIntegration.entitConfiguration(
+            subordinateStatement.getClaimsSet().getSubjectEntityID()));
+  }
+
+  private Optional<URI> ecLocation(final EntityStatement subordinateStatement) {
+    return Optional.ofNullable(subordinateStatement.getClaimsSet().getClaim("ec_location"))
+        .filter(String.class::isInstance)
+        .map(String.class::cast)
+        .map(String::trim)
+        .filter(location -> !location.isEmpty())
+        .map(URI::create);
+  }
+
+  /**
+   * Looks up the {@code ec_location} a parent published in a subordinate statement about the given entity, i.e. the
+   * location its entity configuration must be fetched from instead of {@code /.well-known/openid-federation}.
+   *
+   * @param entity the entity whose entity configuration location is wanted
+   * @return the {@code ec_location}, if any subordinate statement in the currently served graph carries one
+   */
+  public Optional<URI> getEcLocation(final EntityID entity) {
+    return this.snapshot.get().edges().stream()
+        .filter(edge -> Objects.equals(edge.child(), entity))
+        .map(Edges::subordinateStatement)
+        .map(this::ecLocation)
+        .flatMap(Optional::stream)
+        .findFirst();
   }
 
   private void newEdge(final List<Edges> edges, final EntityStatement parent, final EntityStatement entityStatement) {

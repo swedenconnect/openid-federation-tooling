@@ -4,48 +4,38 @@
 
       <v-col cols="4">
         <v-text-field
-          label="Entity ID"
-          density="compact"
           v-model="localEntityId"
+          density="compact"
+          label="Entity ID"
         />
       </v-col>
 
       <v-col cols="4">
         <v-select
-          label="Entity Type"
+          v-model="selectedType"
           density="compact"
-          :items="['',
-                  'openid_relying_party',
-                  'openid_provider',
-                  'oauth_authorization_server',
-                  'oauth_client',
-                  'aauth_resource',
-                  'federation_entity',
-                  'saml_identity_provider',
-                  'Other'
-          ]"
-          v-model="localEntityType"
+          :items="entityTypes"
+          label="Entity Type"
         />
 
-
         <v-text-field
-          v-if="localEntityType === 'Other'"
-          label="Other Entity Type"
+          v-if="selectedType === OTHER"
+          v-model="otherType"
           density="compact"
-          v-model="localEntityType"
+          label="Other Entity Type"
         />
       </v-col>
 
       <v-col cols="3">
         <v-text-field
-          label="Trust Mark"
-          density="compact"
           v-model="localTrustMark"
+          density="compact"
+          label="Trust Mark"
         />
       </v-col>
 
-      <v-col cols="1" >
-        <v-btn block class="mt4" color="primary" @click="$emit('search')">
+      <v-col cols="1">
+        <v-btn block class="mt-4" color="primary" @click="$emit('search')">
           Resolve
         </v-btn>
 
@@ -56,26 +46,46 @@
 </template>
 
 <script setup>
-import {ref, watch} from 'vue'
+  import { ref, watch } from 'vue'
 
-const props = defineProps({
-  entityId: String,
-  entityType: String,
-  trustMark: String
-})
+  const props = defineProps({
+    entityId: String,
+    entityType: String,
+    trustMark: String,
+  })
 
-const emits = defineEmits([
-  'search',
-  'update:entity-id',
-  'update:entity-type',
-  'update:trust-mark'
-])
+  const emits = defineEmits([
+    'search',
+    'update:entity-id',
+    'update:entity-type',
+    'update:trust-mark',
+  ])
 
-const localEntityId = ref(props.entityId)
-const localEntityType = ref(props.entityType)
-const localTrustMark = ref(props.trustMark)
+  const localEntityId = ref(props.entityId)
+  const localEntityType = ref(props.entityType)
+  const localTrustMark = ref(props.trustMark)
 
-watch(localEntityId, v => emits('update:entity-id', v))
-watch(localEntityType, v => emits('update:entity-type', v))
-watch(localTrustMark, v => emits('update:trust-mark', v))
+  watch(localEntityId, v => emits('update:entity-id', v))
+  const OTHER = '__other__'
+
+  const entityTypes = [
+    { title: 'All entity types', value: '' },
+    { title: 'openid_provider', value: 'openid_provider' },
+    { title: 'openid_relying_party', value: 'openid_relying_party' },
+    { title: 'oauth_authorization_server', value: 'oauth_authorization_server' },
+    { title: 'oauth_client', value: 'oauth_client' },
+    { title: 'oauth_resource', value: 'oauth_resource' },
+    { title: 'federation_entity', value: 'federation_entity' },
+    { title: 'saml_identity_provider', value: 'saml_identity_provider' },
+    { title: 'Other...', value: OTHER },
+  ]
+
+  const selectedType = ref(props.entityType || '')
+  const otherType = ref('')
+
+  watch([selectedType, otherType], ([sel, other]) => {
+    localEntityType.value = sel === OTHER ? other.trim() : sel
+  })
+  watch(localEntityType, v => emits('update:entity-type', v))
+  watch(localTrustMark, v => emits('update:trust-mark', v))
 </script>

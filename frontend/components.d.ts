@@ -12,6 +12,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     EntityIdList: typeof import('./src/components/EntityIdList.vue')['default']
+    JwtJson: typeof import('./src/components/JwtJson.vue')['default']
     ResolverResponseView: typeof import('./src/components/ResolverResponseView.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']

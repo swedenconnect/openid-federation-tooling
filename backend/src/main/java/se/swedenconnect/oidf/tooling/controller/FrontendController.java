@@ -38,7 +38,6 @@ public class FrontendController {
    * @return a {@code String} indicating the forward path
    */
   @GetMapping({
-      "/validate",
       "/resolver"
   })
   public String forwardToFrontend() {
