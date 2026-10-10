@@ -45,6 +45,13 @@ public class OidfToolingProperties {
    * Connect timeout for outbound federation calls (entity configurations, listings, fetch, resolve, discovery).
    * Kept short so one unresponsive entity does not stall the whole federation walk.
    */
+  /**
+   * By default, outbound requests to URLs taken from federation data must use HTTPS and must not resolve to
+   * loopback/link-local/private addresses. Note: setting this to true opens a security issue - the service can then
+   * be used to reach internal network addresses. Intended for local development or testing only.
+   */
+  private boolean allowLocalAddresses;
+
   private Duration httpConnectTimeout = Duration.ofSeconds(2);
 
   /**
