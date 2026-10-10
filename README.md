@@ -26,6 +26,7 @@ Provides a visual representation of all nodes in the federation under the define
 | `trustAnchorEntityId`                              | `https://dev.swedenconnect.se/oidf/sc/ta`             | The entity ID of the trust anchor in the federation.                                                                  |
 | `discoveryUri`                                     | `https://dev.swedenconnect.se/oidf/sc/ta/discovery`   | URI used to discover federation metadata.                                                                             |
 | `resolverUri`                                      | `https://dev.swedenconnect.se/oidf/sc/ta/resolve`     | URI used to resolve entities in the federation.                                                                       |
+| `allowLocalAddresses`                              | `false` (default)                                     | If `true`, allows plain HTTP and local/private addresses for outbound federation calls. **Enabling this opens a security issue** - the service can then be used to reach internal networks. Only intended for local development or testing. |
 
 Example configuration in application.yaml
 ```yaml

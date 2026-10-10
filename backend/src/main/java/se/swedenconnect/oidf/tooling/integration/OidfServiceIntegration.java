@@ -33,6 +33,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
+import se.swedenconnect.oidf.tooling.config.OidfToolingProperties;
 
 import java.net.URI;
 import java.text.ParseException;
@@ -51,14 +52,17 @@ import java.util.Optional;
 public class OidfServiceIntegration {
 
   private final RestClient restClient;
+  private final OutboundUrlGuard urlGuard;
 
   /**
    * Constructs a new {@code OidfServiceIntegration} instance.
    *
    * @param restClient the REST client used to interact with external services
+   * @param properties the tooling properties, deciding whether local addresses may be called
    */
-  public OidfServiceIntegration(final RestClient restClient) {
+  public OidfServiceIntegration(final RestClient restClient, final OidfToolingProperties properties) {
     this.restClient = restClient;
+    this.urlGuard = new OutboundUrlGuard(properties.isAllowLocalAddresses());
 
   }
 
@@ -200,6 +204,7 @@ public class OidfServiceIntegration {
   }
 
   private EntityStatement callEntityStatement(final URI uri) {
+    this.urlGuard.assertSafeToConnect(uri);
 
     log.debug("Getting entityStatment {}", uri);
     try {
@@ -232,6 +237,7 @@ public class OidfServiceIntegration {
     final UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUri(listUrl);
 
     final URI uri = uriBuilder.build().toUri();
+    this.urlGuard.assertSafeToConnect(uri);
     log.debug("Getting entityStatment {}", uri);
     final ResponseEntity<String[]> response = this.restClient.get()
         .uri(uri)

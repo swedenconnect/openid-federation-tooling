@@ -127,8 +127,12 @@ public class OidfToolingService {
    *
    * @param entityId the entity to fetch the configuration for
    * @return the decoded entity configuration, including its header, payload and signature
+   * @throws IllegalArgumentException if the entity is not part of the currently served federation graph
    */
   public JWTDecoded getEntityConfiguration(final EntityID entityId) {
+    if (!this.graphBuilder.containsEntity(entityId)) {
+      throw new IllegalArgumentException("Entity is not part of the federation: " + entityId);
+    }
     final EntityStatement statement = this.graphBuilder.getEcLocation(entityId)
         .map(this.integration::entitConfiguration)
         .orElseGet(() -> this.integration.entitConfiguration(entityId));
