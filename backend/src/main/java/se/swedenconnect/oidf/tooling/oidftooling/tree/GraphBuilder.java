@@ -107,33 +107,46 @@ public class GraphBuilder {
     }
     final JSONObject fedMetadata = entityStatementParent.getClaimsSet().getMetadata(EntityType.FEDERATION_ENTITY);
     if (fedMetadata != null) {
-      Optional.ofNullable(fedMetadata.get("federation_list_endpoint"))
+      final List<EntityID> subordinates = Optional.ofNullable(fedMetadata.get("federation_list_endpoint"))
           .map(String::valueOf)
           .map(URI::create)
-          .map(this.oidfServiceIntegration::federationListing)
-          .stream()
-          .flatMap(List::stream)
-          .forEach(entityID -> {
-            Optional.ofNullable(fedMetadata.get("federation_fetch_endpoint"))
-                .map(String::valueOf)
-                .map(URI::create)
-                .ifPresent(uri -> {
-                  final EntityStatement entityStatement = this.oidfServiceIntegration.entityStatement(uri, entityID);
+          .map(uri -> {
+            try {
+              return this.oidfServiceIntegration.federationListing(uri);
+            }
+            catch (final Exception e) {
+              log.info("Unable to list subordinates of {}: {}", entityStatementParent.getEntityID(), e.getMessage());
+              return List.<EntityID>of();
+            }
+          })
+          .orElse(List.of());
 
-                  try {
-                    final EntityStatement entityConfiguration = this.fetchEntityConfiguration(entityStatement);
-                    //todo verify signature on edge pointing to entitystatement
-                    this.newNode(entityStatements, entityStatementParent, entityConfiguration);
-                    this.newEdge(edges, entityStatementParent, entityStatement);
-                    this.recursive(entityStatements, edges, entityConfiguration);
-                  }
-                  catch (final Exception e) {
-                    this.newEdge(edges, entityStatementParent, entityStatement, e);
-                    log.info("Error fetching entity statement for entity {}", entityID, e);
-                  }
+      subordinates.forEach(entityID ->
+          Optional.ofNullable(fedMetadata.get("federation_fetch_endpoint"))
+              .map(String::valueOf)
+              .map(URI::create)
+              .ifPresent(uri -> {
+                final EntityStatement entityStatement;
+                try {
+                  entityStatement = this.oidfServiceIntegration.entityStatement(uri, entityID);
+                }
+                catch (final Exception e) {
+                  log.info("Unable to fetch subordinate statement for entity {}: {}", entityID, e.getMessage());
+                  return;
+                }
 
-                });
-          });
+                try {
+                  final EntityStatement entityConfiguration = this.fetchEntityConfiguration(entityStatement);
+                  //todo verify signature on edge pointing to entitystatement
+                  this.newNode(entityStatements, entityStatementParent, entityConfiguration);
+                  this.newEdge(edges, entityStatementParent, entityStatement);
+                  this.recursive(entityStatements, edges, entityConfiguration);
+                }
+                catch (final Exception e) {
+                  this.newEdge(edges, entityStatementParent, entityStatement, e);
+                  log.info("Error fetching entity statement for entity {}", entityID, e);
+                }
+              }));
     }
   }
 
@@ -156,6 +169,16 @@ public class GraphBuilder {
         .map(String::trim)
         .filter(location -> !location.isEmpty())
         .map(URI::create);
+  }
+
+  /**
+   * Tells whether an entity is a node in the currently served graph.
+   *
+   * @param entity the entity to look for
+   * @return {@code true} if the entity is part of the graph
+   */
+  public boolean containsEntity(final EntityID entity) {
+    return this.snapshot.get().entityStatements().containsKey(entity);
   }
 
   /**
